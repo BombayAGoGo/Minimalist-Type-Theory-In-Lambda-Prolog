@@ -140,6 +140,7 @@ copy_from_type (eq A X) (eq B Y) :- copy_from_type A B, copy_from_type X Y.
 copy_from_type (propId A X Y) (propId B M N) :-
     copy_from_type A B, copy_from_type X M, copy_from_type Y N.
 copy_from_type (id A X) (id B Y) :- copy_from_type A B, copy_from_type X Y.
+
 copy_from_type (elim_id P (uvar as C) (uvar as F)) (elim_id Q D G) :- !,
     copy_from_type P Q, copy_from_type C D, copy_from_type F G.
 copy_from_type (elim_id P (uvar as C) F) (elim_id Q D G) :- !,

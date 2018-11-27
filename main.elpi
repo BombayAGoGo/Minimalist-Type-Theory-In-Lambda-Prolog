@@ -1,3 +1,6 @@
+accumulate "../itp".
+accumulate refinement/all, calc/all.
+
 %
 type fixMe A -> B -> C.
 type k_propId mttType -> mttTerm.
@@ -31,6 +34,7 @@ type ofType             mttType -> mttKind -> mttLevel -> prop.
 %% "isa" checks if a term has type T, that is, if it is of some type T' such that T converts to T' (via conv)
 %type of, isa            mttTerm -> mttType -> mttLevel -> prop.
 type of, isa            mttTerm -> mttType -> mttTerm -> mttLevel -> prop.
+
 %of A B C D :- print "----" (of A B C D), fail.
 %isa A B C D :- print "----" (isa A B C D), fail.
 
@@ -547,7 +551,13 @@ reverse [X|XS] L :- reverse XS L', append L' [X] L.
 get_elem [H|_] 0 H.
 get_elem [_|TL] I R :- I1 is (I - 1), get_elem TL I1 R.
 
+testLib L :- 
+    L = [
+        (univPi A\ locDefL id (implies A A))
+    ].
+
 in_library P :-
+    /*
     translateLib L1,
     trueLib L2,
     propLib L3,
@@ -558,6 +568,8 @@ in_library P :-
     forallLib Lforall,
     propEqLib LpropEq,
     concat [L1, L2, L3, L4 , L5, L6, Lforall, Limpl, LpropEq] L,
+    */
+    testLib L,
     process_library L P.
 
 kind libraryEntry type.
@@ -717,4 +729,3 @@ process_cut (conv_symm X Y) AA :-
    spy(isa Y T Y' int),
    spy(conv X' Y'),
    AA = conv Y' X'.
-

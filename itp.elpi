@@ -29,6 +29,5 @@ prove X Type ProofTerm InScript OutScript :-
     itp_loop X (state [(1, goal X Type ProofTerm [])] [] [] 1) InScript _ OutScript,
     print "Total script: " OutScript.
 
-
 % Only common tactic: manual input i.e. a name from a proof assistant definition
 tactic (man T) _ _ T.
