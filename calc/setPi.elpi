@@ -15,22 +15,22 @@ ofType (setPi B C) KIND3 IE
     ,  spy(pts_fun KIND1 KIND2 KIND3)
     .
 
-of (lambda B F) (setPi B C) IE
+of (lambda B F) (setPi B C) (lambda B F') IE
     :- spy (ofType B _ IE)
-    ,  spy (pi x\ locDecl x B => of (F x) (C x) IE)
+    ,  spy (pi x\ locDecl x B => of (F x) (C x) (F' x) IE)
     .
 
-of (app Lam X) (CX) IE
-    :- spy(isa Lam (setPi B C) IE)
-    ,  spy(isa X B IE)
-    ,  CX = C X
+of (app Lam X) CX (app Lam' X') IE
+    :- spy(isa Lam (setPi B C) Lam' IE)
+    ,  spy(isa X B X' IE)
+    ,  pi x\ (locDecl x B, copy x X') => conv (C x) CX
     .
 
-
-hstep (app Lam X) (F X)
-    :- (hnf Lam (lambda _B F))
+hstep (app Lam Bb) Res
+    :- hnf Lam (lambda _B F)
+    ,  subst Lam [Bb] Res'
+    ,  hnf Res' Res
     .
-
 
 dconv (setPi B C) (setPi B' C') 
     :- (conv B B')
@@ -39,13 +39,10 @@ dconv (setPi B C) (setPi B' C')
 
 dconv (lambda B F) (lambda B' F') 
     :- (conv B B')
-    ,  pi x\ locDecl x B => (conv (F x) (F' x)) 
+    ,  pi x\  locDecl x B => (conv (F x) (F' x)) 
     .
 
-dconv (app Lam X) (app Lam' X')
-    :- (conv Lam Lam')
-    ,  (conv X X')
-    .
+dconv (app F X) (app F' X') :- (conv F F'), (conv X X').
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                 Interpretation                                 %%

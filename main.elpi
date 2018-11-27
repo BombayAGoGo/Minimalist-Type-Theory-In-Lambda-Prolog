@@ -1,3 +1,6 @@
+accumulate "../itp".
+accumulate refinement/all, calc/all.
+
 %
 type fixMe A -> B -> C.
 type k_propId mttType -> mttTerm.
@@ -29,7 +32,8 @@ type ofType             mttType -> mttKind -> mttLevel -> prop.
 
 %% "of" computes the type of a term
 %% "isa" checks if a term has type T, that is, if it is of some type T' such that T converts to T' (via conv)
-type of, isa            mttTerm -> mttType -> mttLevel -> prop.
+%type of, isa            mttTerm -> mttType -> mttLevel -> prop.
+type of, isa            mttTerm -> mttType -> mttTerm -> mttLevel -> prop.
 
 %% local definitions and type definitions
 type locDef         mttTerm -> mttType -> mttTerm -> prop.
@@ -39,7 +43,7 @@ type locTypeDef     mttType -> mttKind -> mttType -> prop.
 type # (mttTerm -> A) -> mttTerm -> A.
 %hstep (# A B) (A B).
 
-of (# A B) Type IE :- of (A B) Type IE.
+of (# A B) Type VApp IE :- of (A B) Type VApp IE.
 ofType (# A B) Kind IE :- ofType (A B) Kind IE.
 
 %% conversion to (weak) head-normal form WHNF
@@ -100,6 +104,7 @@ pts_fun _ _ col.
 pts_for A props props :- pts_leq A set, !.
 pts_for _ B propc :- pts_leq B propc.
 
+/*
 mode (of i o o).
 mode (ofType i o o).
 mode (isa i i o).
@@ -109,6 +114,17 @@ of uvar _ _ :- print "ERROR: Flexible of!", fail.
 ofType uvar _ _ :- print "ERROR: Flexible ofType!", fail.
 isa uvar _ _, isa _ uvar _ :- print "ERROR: Flexible isa!", fail.
 isaType uvar _ _, isaType _ uvar _ :- print "ERROR: Flexible isaType!", fail.
+*/
+
+mode (of i o o o).
+mode (ofType i o o).
+mode (isa i i o o).
+mode (isaType i o o).
+
+of (uvar as X) T Y IE :- declare_constraint (of X T Y IE) [X, Y].
+ofType (uvar as X) K IE :- declare_constraint (ofType X K IE) [X].
+isa (uvar as X) T Y IE :- declare_constraint (isa X T Y IE) [X, Y].
+isaType (uvar as X) K IE :- declare_constraint (isaType X K IE) [X].
 
 %% !!!DEBUG mock typing of term M, returns chosen type T
 of (fixMe M T ) T int 
@@ -166,8 +182,8 @@ isaType Type Kind IE
     ,  spy(pts_leq  Kind' Kind)
     .
 
-isa Term TY IE 
-    :- spy(of Term TY' IE)
+isa Term TY Term' IE 
+    :- spy(of Term TY' Term' IE)
     ,  erase_var_app TY TYe
     ,  erase_var_app TY' TYe'
     ,  spy(conv TYe' TYe)
@@ -175,12 +191,12 @@ isa Term TY IE
 
 ofType X KIND _ :- locTypeDef X KIND _.
 
-of X Y _ :- locDecl X Y.
+of X T X _ :- locDecl X T.
 
 %% the universe of small propositions
 ofType propS col _IE.
-of (encode T) propS IE :- spy (ofType T props IE).
-ofType (decode T) props IE :- spy (of T propS IE).
+of (encode T) propS (encode T) IE :- spy (ofType T props IE).
+ofType (decode T) props (decode T') IE :- spy (of T propS T' IE).
 hstep (encode T) S :- hnf T (decode S).
 hstep (decode T) S :- hnf T (encode S).
 dconv (encode S1) (encode S2) :- conv S1 S2.
@@ -233,8 +249,8 @@ tau_eq P1 P2 F
     .
 
 proof_eq A1 A2 T H
-    :- isa A1 T ext
-    ,  isa A2 T ext
+    :- isa A1 T _ ext
+    ,  isa A2 T _ ext
     ,  ofType T K ext
     ,  pts_leq K propc
     ,  H = id singleton star
@@ -242,8 +258,8 @@ proof_eq A1 A2 T H
 
 %interpret X:_ext T in un Xi di tipo Ti
 interp_isa X T Xi 
-        :- spy(of X T_inf ext)
-        ,  spy(interp X Xi')
+        :- spy(of X T_inf X' ext)
+        ,  spy(interp X' Xi')
         ,  spy(tau T_inf T F)
         ,  spy(Xi = F Xi')
         .
@@ -504,6 +520,11 @@ propLib L :-
          (forall_lam Xi _ \ forall_lam Xi _ \ impl_lam trueT _ \ mk_trueT))))
  ].
 
+%type length list A -> int -> prop.
+
+length [] 0.
+length [_|TL] L :- length TL L', L is L' + 1.
+
 type append list A -> list A -> list A -> prop.
 
 append [] L L.
@@ -514,28 +535,39 @@ type concat list (list A) -> list A -> prop.
 concat [] [].
 concat [H|TL] R :- concat TL L, append H L R.
 
-type reverse_ list A -> list A -> list A -> prop.
+%type reverse_ list A -> list A -> list A -> prop.
 type reverse list A -> list A -> prop.
 
-reverse_ [] A A.
-reverse_ [H|TL] A R :- reverse_ TL [H|A] R.
-reverse L R :- reverse_ L [] R.
+%reverse_ [] A A.
+%reverse_ [H|TL] A R :- reverse_ TL [H|A] R.
+%reverse L R :- reverse_ L [] R.
+
+reverse [] [].
+reverse [X|XS] L :- reverse XS L', append L' [X] L.
 
 get_elem [H|_] 0 H.
 get_elem [_|TL] I R :- I1 is (I - 1), get_elem TL I1 R.
 
+testLib L :- 
+    L = [
+        (univPi A\ locDefL id (implies A A))
+    ].
+
 in_library P :-
- translateLib L1,
- trueLib L2,
- propLib L3,
- singletonLib L4,
- setSigmaLib L5,
- setPiLib L6,
- impliesLib Limpl,
- forallLib Lforall,
- propEqLib LpropEq,
- concat [L1,L2,L3,L4 ,L5, L6, Lforall, Limpl, LpropEq] L,
- process_library L P.
+    /*
+    translateLib L1,
+    trueLib L2,
+    propLib L3,
+    singletonLib L4,
+    setSigmaLib L5,
+    setPiLib L6,
+    impliesLib Limpl,
+    forallLib Lforall,
+    propEqLib LpropEq,
+    concat [L1, L2, L3, L4 , L5, L6, Lforall, Limpl, LpropEq] L,
+    */
+    testLib L,
+    process_library L P.
 
 kind libraryEntry type.
 type process_entry libraryEntry -> prop -> prop.
@@ -578,19 +610,42 @@ verify_arg_order N
     ,  spy(verify_arg_order_ N RVars)
     .
 
+% Caso di definizione senza termine -> lo devi dimostrare
+process_entry (locDefL N TY) Hyp :-
+    spy(verify_arg_order N),
+    spy(isaType TY _ int),
+    erase_var_app TY TY',
+    spy(of TE TY' RTE Tint),
+    %erase_var_app RTE RTE',
+    % TE non e' dato -> meta -> prova
+    prove TE TY' RTE _,
+    Hyp = locDef N TY RTE,
+    print "## New definition: " N.
+% Caso di prova con uno script (completo o meno) in input
+process_entry (locDefL N TY (script S)) Hyp :-
+    spy(verify_arg_order N),
+    spy(isaType TY _ int),
+    erase_var_app TY TY',
+    spy(of TE TY' RTE Tint),
+    %erase_var_app RTE RTE',
+    % TE non e' dato -> meta -> prova
+    prove TE TY' RTE S _,
+    Hyp = locDef N TY RTE,
+    print "## New definition: " N.
+
 process_entry (locTypeDefL N KIND TY) Hyp :-
-   spy(verify_arg_order N),
-   spy(ofType TY KIND int),
-   erase_var_app TY TY',
-   Hyp = locTypeDef N KIND TY',
-   print "## New type definition: " N.
+    spy(verify_arg_order N),
+    spy(ofType TY KIND int),
+    erase_var_app TY TY',
+    Hyp = locTypeDef N KIND TY',
+    print "## New type definition: " N.
 process_entry (locDefL N TY TE) Hyp :-
-   spy(verify_arg_order N),
-   spy(isaType TY _ int),
-   spy(isa TE TY int),
-   erase_var_app TE TE',
-   Hyp = locDef N TY TE',
-   print "## New definition: " N.
+    spy(verify_arg_order N),
+    spy(isaType TY _ int),
+    spy(isa TE TY RTE Tint),
+    erase_var_app RTE RTE',
+    Hyp = locDef N TY RTE',
+    print "## New definition: " N.
    
 process_entry (univPi F) Hyp2 :-
    spy (pi Bi \ ofType Bi set int => spy (process_entry (F Bi) (Hyp Bi))),
@@ -605,40 +660,40 @@ process_entry (univProp F) Hyp2 :-
    Hyp2 = (pi Bi \ Hyp Bi :- spy (isaType Bi props int)).
 
 process_entry (univDepPi Bi F) Hyp2 :-
-   spy (pi Ci \ (pi x \ ofType (Ci x) set int :- isa x Bi int) =>
+   spy (pi Ci \ (pi x \ ofType (Ci x) set int :- isa x Bi x int) =>
                 (pi x \ pi y \ dconv (Ci x) (Ci y) :- conv x y) =>
                 spy (process_entry (F Ci) (Hyp Ci))),
-   Hyp2 = (pi Ci \ Hyp Ci :- spy (pi x \ (isaType (Ci x) set int :- of x Bi int))
+   Hyp2 = (pi Ci \ Hyp Ci :- spy (pi x \ (isaType (Ci x) set int :- of x Bi x int))
                 % , spy(pi x \ pi y \ dconv (Ci x) (Ci y) :- conv x y)  % This should not be needed, right?
           ).
 process_entry (univDepProp Bi F) Hyp2 :-
-   spy (pi Ci \ (pi x \ ofType (Ci x) props int :- isa x Bi int) =>
+   spy (pi Ci \ (pi x \ ofType (Ci x) props int :- isa x Bi x int) =>
                 (pi x \ pi y \ dconv (Ci x) (Ci y) :- conv x y) =>
                 spy (process_entry (F Ci) (Hyp Ci))),
-   Hyp2 = (pi Ci \ Hyp Ci :- spy (pi x \ (isaType (Ci x) props int :- of x Bi int))
+   Hyp2 = (pi Ci \ Hyp Ci :- spy (pi x \ (isaType (Ci x) props int :- of x Bi x int))
                 %, spy(pi x \ pi y \ dconv (Ci x) (Ci y) :- conv x y)  % This should not be needed, right?
           ).
 	  
 process_entry (univDepCol Bi F) Hyp2 :-
-   spy (pi Ci \ (pi x \ ofType (Ci x) col int :- isa x Bi int) =>
+   spy (pi Ci \ (pi x \ ofType (Ci x) col int :- isa x Bi x int) =>
                 (pi x \ pi y \ dconv (Ci x) (Ci y) :- conv x y) =>
                 spy (process_entry (F Ci) (Hyp Ci))),
-   Hyp2 = (pi Ci \ Hyp Ci :- spy (pi x \ (isaType (Ci x) col int :- of x Bi int))
+   Hyp2 = (pi Ci \ Hyp Ci :- spy (pi x \ (isaType (Ci x) col int :- of x Bi x int))
                 %, spy(pi x \ pi y \ dconv (Ci x) (Ci y) :- conv x y)  % This should not be needed, right?
           ). 
 
 
 process_entry (univPiT T F) Hyp2 :-
-   spy (pi x \ of x T int => spy (process_entry (F x) (Hyp x))),
-   Hyp2 = (pi x \ Hyp x :- spy(isa x T int)).
+   spy (pi x \ of x T x int => spy (process_entry (F x) (Hyp x))),
+   Hyp2 = (pi x \ Hyp x :- spy(isa x T x int)).
 
 process_entry (univDepPiT Ai Bi F) Hyp2 :-
-   spy (pi t\   (pi x \ ofType (Bi x) set int :- isa x Ai int) =>
+   spy (pi t\   (pi x \ ofType (Bi x) set int :- isa x Ai x int) =>
                 (pi x \ pi y \ dconv (Bi x) (Bi y) :- conv x y) =>
-                (pi x\ of (t x) (Bi x) int :- isa x Ai int) =>
+                (pi x\ of (t x) (Bi x) (t x) int :- isa x Ai x int) =>
 		spy(process_entry (F t) (Hyp t))),
-   Hyp2 = (pi t\ Hyp t :-   spy (pi x\ (isaType (Bi x) set int :- of x Ai int)),  %this should hold already?
-   	      	     	    spy(pi x\ isa (t x) (Bi x) int  :- of x Ai int)).
+   Hyp2 = (pi t\ Hyp t :-   spy (pi x\ (isaType (Bi x) set int :- of x Ai x int)),  %this should hold already?
+   	      	     	    spy(pi x\ isa (t x) (Bi x) (t x) int  :- of x Ai x int)).
 
 process_entry (hyp H1g H2g Eg) Hyp2 :-
    erase_var_app H1g H1,
@@ -657,22 +712,21 @@ process_cut (pi a \ C a) (pi a \ H a) :-
 process_cut (H1 => C) (H1 => H2) :-
    spy(H1 => spy(process_cut C H2)).
 process_cut (conv_trans X Y Z) AA /*CSC: MAYBE AN ELPI BUG HERE? (conv X Z)*/ :-
-   spy(of X T int),
-   spy(isa Y T int),
-   spy(isa Z T int),
-   spy(conv X Y), spy(conv Y Z),
-   AA = conv X Z.
+   spy(of X T X' int),
+   spy(isa Y T Y' int),
+   spy(isa Z T Z' int),
+   spy(conv X' Y'), spy(conv Y' Z'),
+   AA = conv X' Z'.
 
 process_cut (conv_trans_symm X Y Z) AA /*CSC: MAYBE AN ELPI BUG HERE? (conv X Z)*/ :-
-   spy(of X T int),
-   spy(isa Y T int),
-   spy(isa Z T int),
-   spy(conv X Y), spy(conv Y Z),
-   AA = conv Z X.
+   spy(of X T X' int),
+   spy(isa Y T Y' int),
+   spy(isa Z T Z' int),
+   spy(conv X' Y'), spy(conv Y' Z'),
+   AA = conv Z' X'.
 
 process_cut (conv_symm X Y) AA :-
-   spy(of X T int),
-   spy(isa Y T int),
-   spy(conv X Y),
-   AA = conv Y X.
-
+   spy(of X T X' int),
+   spy(isa Y T Y' int),
+   spy(conv X' Y'),
+   AA = conv Y' X'.

@@ -1,0 +1,158 @@
+% ------------------------ %
+% ---- CONV EXTENSION ---- %
+% ------------------------ %
+
+% INVARIANT: here we only deal with terms without names since conversion takes
+%            them out before arriving here
+
+mode (is_stuck i).
+is_stuck uvar.
+is_stuck (app M _) :- is_stuck M.
+is_stuck (forall_app M _) :- is_stuck M.
+is_stuck (impl_app M _) :- is_stuck M.
+%is_stuck _ :- fail.
+
+mode (conv i i).
+conv X Y :- print (conv X Y), fail.
+conv X Y :- is_stuck X, is_stuck Y, !, conv_constraint X Y X Y.
+conv X Y :- (is_stuck X, !; is_stuck Y), !,
+    unwind_app X XApp XArgs , unwind_app Y YApp YArgs,
+    unify XApp XArgs YApp YArgs.
+% If X or Y isn't stuck then it will become a `multi_app X/Y []` and later the
+% multi_app will be removed.
+
+% Get the uvars that made A and B stuck and put a conversion constraint on them
+mode (conv_constraint i i).
+conv_constraint (app M _) S A B :- conv_constraint M S A B.
+conv_constraint T (app M _) A B :- conv_constraint T M A B. 
+conv_constraint (forall_app M _) S A B :- conv_constraint M S A B.
+conv_constraint T (forall_app M _) A B :- conv_constraint T M A B. 
+conv_constraint (impl_app M _) S A B :- conv_constraint M S A B.
+conv_constraint T (impl_app M _) A B :- conv_constraint T M A B. 
+conv_constraint (uvar as X) (uvar as Y) A B :- !, declare_constraint (conv A B) [X, Y].
+
+accumulate catch_redexes.
+
+% --------------------- %
+% ---- UNIFICATION ---- %
+% --------------------- %
+
+macro @unify T S :- unify T [] S [].
+
+mode (unify i i i i).
+unify A B C D :- print (unify A B C D), fail.
+
+% delay flex-flex
+unify (uvar as X) [] (uvar as Y) [] :- !,
+    declare_constraint (unify X [] Y []) [X, Y].
+
+accumulate unify_redexes.
+
+% unwind app
+mode (unwind_app i o o).
+unwind_app X Out Args :-
+    unwind_app_aux X [] [] Out.
+
+mode (unwind_app_aux i i i o).
+unwind_app_aux (app X Y) AppType Args Out :- !,
+    append Args' [Y] Args,
+    append [setPiApp] AppTypes AppTypes',
+    unwind_app X AppType' Args' Out.
+unwind_app_aux (forall_app X Y) AppTypes Args Out :- !,
+    append Args' [Y] Args,
+    append [forallApp] AppTypes AppTypes',
+    unwind_app X Args' AppType'.
+unwind_app_aux (impl_app X Y) AppTypes Args Out :- !,
+    append Args' [Y] Args,
+    append [implApp] AppTypes AppTypes',
+    unwind_app X Args' AppType'.
+unwind_app_aux X AppTypes [] (multi_app X AppTypes).
+
+mode (rewind_app i i o).
+rewind_app (multi_app X AppTypes) Args Out :-
+    rewind_app_aux X AppTypes Args Out. 
+%rewind_app X [] X. % if something wasn't a multi_app then just return it
+
+mode (rewind_app_aux i i i o).
+rewind_app_aux App [] [] App.
+rewind_app_aux App [setPiApp|ATs] [L|Ls] Out :-
+    rewind_app_aux (app App L) ATs Ls Out.
+rewind_app_aux App [forallApp|ATs] [L|Ls] Out :-
+    rewind_app_aux (forall_app App L) ATs Ls Out.
+rewind_app_aux App [implApp|ATs] [L|Ls] Out :-
+    rewind_app_aux (impl_app App L) ATs Ls Out.
+
+% Meta with args is a lambda/forall_lam/impl_lam
+unify (multi_app (uvar as X) [setPiApp|ATs]) [L|Ls] T L' :- !, 
+    print "lam" X L T L',
+    of L LTy _ _, X = lambda LTy F,
+    pi x\ (locDecl x LTy, copy x L) => unify (multi_app (F x) ATs) Ls T L'.
+
+unify (multi_app (uvar as X) [forallApp|ATs]) [L|Ls] T L' :- !, 
+    print "flam" X L T L',
+    of L LTy _ _, X = forall_lam LTy F,
+    pi x\ (locDecl x LTy, copy x L) => unify (multi_app (F x) ATs) Ls T L'.
+
+unify (multi_app (uvar as X) [implApp|ATs]) [L|Ls] T L' :- !, 
+    print "ilam" X L T L',
+    of L LTy _ _, X = impl_lam LTy F,
+    pi x\ (locDecl x LTy, copy x L) => unify (multi_app (F x) ATs) Ls T L'.
+
+% Erase multi_app for non applied terms
+unify (multi_app X []) [] T L :- !, unify X [] T L.
+unify T L (multi_app X []) [] :- !, unify T L X [].
+% Invariant: from here on only actual applications will have multi_app
+
+% ---- TYPE UNIFICATION ---- %
+
+accumulate type_mimic.
+
+% ---- TERM UNIFICATION ---- %
+
+% PROJECTION
+% Invariant: Term is not a multi_app
+unify (uvar _ Vs as X) [] Term [] :- print "proj_term" X Term Args,
+    try_projection X Vs Term.
+% Invariant: Term is a multi_app -> non-empty args
+unify (uvar _ Vs as X) [] Term Args :- print "proj_app" X Term Args,
+    rewind_app Term Args App, try_projection X Vs App.
+
+mode (try_projection i i i).
+try_projection _ [] _ :- fail.
+try_projection X [V|Vs] App :-
+    (not (forbid V), get_copy V T', use_var V T' App Asgn, X = Asgn);
+    try_projection X Vs App.
+
+mode (get_copy i o).
+get_copy V X :- declare_constraint (copy V X) [X].
+
+mode (use_var i i i o).
+accumulate use_input.
+use_var V T S V :- conv T S.
+
+% MIMIC
+
+accumulate term_mimic.
+
+% Const
+unify (uvar as X) [] T [] :- !, print "const" X T, not (name T), X = T.
+
+% Simmetric case
+unify T L' (uvar as X) L :- !, unify X L T L'.
+
+
+constraint read-copies copy {
+    rule (Ctx ?- read-copies)
+    | (print "copies: " Ctx).
+
+    rule (E: Ctx ?- copy V R)
+    | (climb_telescope Ctx V V', print Ctx V V' R)
+    <=> (E: Ctx ?- R = V').
+}
+
+mode (climb_telescope i i o).
+climb_telescope A B C :- print (climb_telescope A B C), fail.
+climb_telescope [] V V.
+climb_telescope [copy X Y|Ctx] X Y :- not (name Y).
+climb_telescope [copy X Y|Ctx] X R :- !, climb_telescope Ctx Y R.
+climb_telescope [_|Ctx] V R :- !, climb_telescope Ctx V R.
