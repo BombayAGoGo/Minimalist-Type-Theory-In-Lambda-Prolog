@@ -4,12 +4,12 @@
 %this may soon change as it is still to be decided how this should look like
 type letIn mttType -> mttTerm -> (mttTerm -> mttTerm) -> mttTerm.
 
-of (letIn T M N) T' ext :- 
-spy(    isaType T propc ext),
-spy(    isa M T ext), 
-spy(    pi x \ locDecl x T =>  of (N x) T' ext).
+of (letIn T M N) T' (letIn T M' N') ext :- 
+    spy(isaType T propc ext),
+    spy(isa M T M' ext), 
+    spy(pi x\ locDecl x T => of (N x) T' (N' x) ext).
 
 
 ofType (letIn KIND1 T S) KIND2 ext :- 
-spy(    isaType T KIND1 ext), 
-spy(    pi x \ locDecl x KIND1 =>  ofType  (N x) KIND2 ext).
+    spy(isaType T KIND1 ext), 
+    spy(pi x\ locDecl x KIND1 => ofType (N x) KIND2 ext).
