@@ -1,0 +1,34 @@
+%accumulate utils.
+accumulate itp_components/all.
+
+% ------------------- %
+% ---- INTERFACE ---- %
+% ------------------- %
+
+% Prove with term as input
+prove_term X T X' OG S :-
+    prove X T X' OG S [].
+prove_term X T X' In OG S :-
+    of X T X', itp_loop X (state [(1, goal X T X' [])] [] [] 1) In OG S.
+
+% Prove with multiple goals as input coming from the proof assistant
+mode (prove_goals i i o).
+prove_goals [] [] S :-
+prove_goals [G|Gs] [OG|OGs] S :-
+    prove_goal G OG S', append S' S'' S, prove_goals Gs OGs S''.
+mode (prove_goals i i o).
+prove_goal (goal X _ _ _ as G) OG S :-
+    itp_loop X (state [(1, G)] [] [] 1) [] OG S.
+
+
+% Old
+prove X Type ProofTerm OutScript :-
+    prove X Type ProofTerm [] OutScript.
+
+prove X Type ProofTerm InScript OutScript :-
+    of X Type ProofTerm,
+    itp_loop X (state [(1, goal X Type ProofTerm [])] [] [] 1) InScript _ OutScript.
+
+
+% Only common tactic: manual input i.e. a name from a proof assistant definition
+tactic (man T) _ _ T.

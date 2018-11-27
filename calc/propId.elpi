@@ -14,24 +14,28 @@ type elim_id    mttTerm
 ofType (propId A AA1 AA2) KIND _IE
     :- ofType A KIND' int
     ,  pts_eq KIND' KIND
-    ,  isa AA1 A int
-    ,  isa AA2 A int
+    ,  isa AA1 A _ int
+    ,  isa AA2 A _ int
     .
 
-of (id A AA) (propId A AA AA) int 
+of (id A AA) (propId A AA' AA') (id A AA') int 
     :- spy(ofType A _ int)
-    ,  spy(isa AA A int)
+    ,  spy(isa AA A AA' int)
     .
 
-of (elim_id P C CC) (C AA1 AA2) int
-    :- spy(of P (propId A AA1 AA2) int)
+of (elim_id P C CC) (C_AA1_AA2) (elim_id P' C CC') int
+    :- spy(of P (propId A AA1 AA2) P' int)
     ,  spy(pi x\ pi y\ locDecl x A => locDecl y A => isaType (C x y) propc int)
-    ,  spy(pi x\ locDecl x A => of (CC x) (C x x) int)
+    ,  spy(pi x\ locDecl x A => of (CC x) (C x x) (CC' x) int)
+    ,  spy(pi x y\ (
+        locDecl x A, locDecl y A, copy x AA1, copy y AA2) =>
+            conv (C x y) (C_AA1_AA2))
     .
 
-
-hstep (elim_id (id _A AA) _C CC) (CC AA).
-
+hstep (elim_id Id _C CC) Res :-
+    hnf Id (id _A AA),
+    subst CC [AA] Res',
+    hnf Res' Res.
 
 dconv (propId A AA1 AA2) (propId A' AA1' AA2')
     :- spy (conv A A')
@@ -46,7 +50,7 @@ dconv (id A AA) (id A' AA')
 
 dconv (elim_id P C CC) (elim_id P' C' CC')
     :- conv P P'
-    ,  isa P (propId A _ _) int
+    ,  isa P (propId A _ _) _ int
     ,  pi x\ pi y\ locDecl x A => locDecl y A => conv (C x y) (C' x y)
     ,  pi x\ locDecl x A => conv (CC x) (CC' x)
     .

@@ -6,21 +6,22 @@ type eq   mttType -> mttTerm -> mttTerm.
 
 ofType (propEq A AA1 AA2) KIND ext
     :- spy(ofType A KIND' ext)
-    ,  spy(pts_eq KIND' KIND)
+    ,  spy(pts_eq  KIND' KIND)
     ,  spy(isa AA1 A ext)
     ,  spy(isa AA2 A ext)
     .
 
 
-of (eq C Cc) (propEq C Cc Cc) ext
-    :-  spy(of Cc C ext)
+of (eq C Cc) (propEq C Cc Cc) (eq C Cc') ext
+    :-  spy(of Cc C Cc' ext)
     .
 
 
 
 %dstep A B :- of _ ()
 
-dconv (propEq A AA1 AA2) (propEq A' AA1' AA2') :- spy(conv A A'), spy(conv AA1 AA1'), spy (conv AA2 AA2').
+dconv (propEq A AA1 AA2) (propEq A' AA1' AA2') :-
+    spy(conv A A'), spy(conv AA1 AA1'), spy (conv AA2 AA2').
 
 dconv (eq A AA) (eq A' AA') :- conv A A', conv AA AA'.
 
