@@ -10,8 +10,7 @@ type app mttTerm -> mttTerm -> mttTerm.
 
 ofType (setPi B C) KIND3 IE
     :- spy (ofType B KIND1 IE)
-    ,  (pi x\ locDecl x B
-        => spy (ofType (C x) KIND2 IE))
+    ,  (pi x\ locDecl x B => spy (ofType (C x) KIND2 IE))
     ,  spy(pts_fun KIND1 KIND2 KIND3)
     .
 

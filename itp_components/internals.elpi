@@ -470,7 +470,8 @@ not_a_dup N [vdecl _ _|VDecls] :- not_a_dup N VDecls.
 % ----------------------- %
 
 mode (lookdown i i i i).
-lookdown (uvar K L as X) VDecls Y T :- declare_constraint (read-refined X VDecls Y T) [X], print_constraints.
+lookdown (uvar K L as X) VDecls Y T :-
+    declare_constraint (read-refined X VDecls Y T) [X].
 
 % Invariant 1: L1 = L1' and L2 is the same length as them i.e. same metavars are
 %            applied to the same number of fresh variables in different contexts
@@ -478,8 +479,8 @@ lookdown (uvar K L as X) VDecls Y T :- declare_constraint (read-refined X VDecls
 constraint isa read-evar read-refined of {
      rule (E1 : Ctx ?- isa (uvar K L1) Ty (uvar O L1' as Y) _)
         \ (E2 : Ctx2 ?- read-refined (uvar O L2) VDecls X T)
-        | (print "align-debug: " K L1 "-" O L1' "-" O L2,
-          print "ctx" Ctx Ctx2,
+        | (%print "align-debug: " K L1 "-" O L1' "-" O L2,
+          %print "ctx" Ctx Ctx2,
           L1 = L1',
           reverse L1' RL1', reverse L2 RL2, reverse VDecls RVDecls,
           create_copy_hyps RVDecls RL2 RL1' Hyps Rem,
