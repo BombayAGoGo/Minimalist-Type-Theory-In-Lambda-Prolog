@@ -31,6 +31,8 @@ type ofType             mttType -> mttKind -> mttLevel -> prop.
 %% "isa" checks if a term has type T, that is, if it is of some type T' such that T converts to T' (via conv)
 %type of, isa            mttTerm -> mttType -> mttLevel -> prop.
 type of, isa            mttTerm -> mttType -> mttTerm -> mttLevel -> prop.
+%of A B C D :- print "----" (of A B C D), fail.
+%isa A B C D :- print "----" (isa A B C D), fail.
 
 %% local definitions and type definitions
 type locDef         mttTerm -> mttType -> mttTerm -> prop.
@@ -117,7 +119,7 @@ mode (ofType i o o).
 mode (isa i i o o).
 mode (isaType i o o).
 
-of (uvar as X) T Y IE :- declare_constraint (of X T Y IE) [X, Y].
+of (uvar as X) T Y IE :- declare_constraint (isa X T Y IE) [X, Y].
 ofType (uvar as X) K IE :- declare_constraint (ofType X K IE) [X].
 isa (uvar as X) T Y IE :- declare_constraint (isa X T Y IE) [X, Y].
 isaType (uvar as X) K IE :- declare_constraint (isaType X K IE) [X].
@@ -607,8 +609,8 @@ process_entry (locDefL N TY) Hyp :-
     %erase_var_app RTE RTE',
     % TE non e' dato -> meta -> prova
     prove TE TY' RTE _,
-    print "here", halt,
     Hyp = locDef N TY RTE,
+    print "defined " N TY RTE,
     print "## New definition: " N.
 % Caso di prova con uno script (completo o meno) in input
 process_entry (locDefL N TY (script S)) Hyp :-

@@ -2,9 +2,9 @@
 
 accumulate debug.
 
-accumulate main.
-
 accumulate itp, refinement/all, calc/subst.%, calc/all.
+
+accumulate main.
 
 accumulate calc/and.
 accumulate calc/propEq.
