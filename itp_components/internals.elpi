@@ -470,22 +470,32 @@ not_a_dup N [vdecl _ _|VDecls] :- not_a_dup N VDecls.
 % ----------------------- %
 
 mode (lookdown i i i i).
-lookdown (uvar K L as X) VDecls Y T :- declare_constraint (read-refined X VDecls Y T) [X].
+lookdown (uvar K L as X) VDecls Y T :- declare_constraint (read-refined X VDecls Y T) [X], print_constraints.
 
-constraint i _sa read-evar read-refined of {
+% Invariant 1: L1 = L1' and L2 is the same length as them i.e. same metavars are
+%            applied to the same number of fresh variables in different contexts
+% Invariant 2: VDecls correspond the the last n fresh variables in L1/L1'/L2
+constraint isa read-evar read-refined of {
      rule (E1 : Ctx ?- isa (uvar K L1) Ty (uvar O L1' as Y) _)
-        \ (E2 : read-refined (uvar O L2) VDecls X T)
-        | (%print "align-debug: " K L1 "-" O L1' "-" O L2,
+        \ (E2 : Ctx2 ?- read-refined (uvar O L2) VDecls X T)
+        | (print "align-debug: " K L1 "-" O L1' "-" O L2,
+          print "ctx" Ctx Ctx2,
           L1 = L1',
-          create_copy_hyps L1' VDecls Hyps,
+          reverse L1' RL1', reverse L2 RL2, reverse VDecls RVDecls,
+          create_copy_hyps RVDecls RL2 RL1' Hyps Rem,
           Hyps => copy_from_type Ty S, !;
           print "align fail on" L1 "=" L1', halt)
-        <=> (E2: (X = uvar K [], T = S)).
+        <=> (E2: (X = uvar K Rem, T = S)).
 }
 
-mode (create_copy_hyps i i o).
-create_copy_hyps [] [] [].
-create_copy_hyps [V|Vs] [vdecl W _|Ws] [copy_var V W|Hyps] :- create_copy_hyps Vs Ws Hyps.
+mode (create_copy_hyps i i i o o).
+create_copy_hyps A B C D E :- print (create_copy_hyps A B C D E), fail.
+create_copy_hyps [] [] [] [] [].
+create_copy_hyps [] [V1|V1s] [V2|V2s] [copy_var V2 V1|Hyps] Rem :-
+    append [V1] Rem' Rem,
+    create_copy_hyps [] V1s V2s Hyps Rem'.
+create_copy_hyps [vdecl W _|Ws] [_|V1s] [V2|V2s] [copy_var V2 W|Hyps] Rem :-
+    create_copy_hyps Ws V1s V2s Hyps Rem.
 
 % ------------------------- %
 % ---- TACTICS HELPERS ---- %

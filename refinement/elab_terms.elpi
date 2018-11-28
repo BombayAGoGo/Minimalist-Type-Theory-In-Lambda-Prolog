@@ -2,12 +2,17 @@
 
 % ---- TYPING ---- %
 
+isa (forall_app Lam dots) T O IE :- isa Lam T O IE.
+isa (forall_app Lam dots) T O IE :- !,
+    isa Lam (forall _ _) _ _, isa (forall_app (forall_app Lam Arg) dots) T O IE.
+
+isa (impl_app Lam dots) T O IE :- isa Lam T O IE.
+isa (impl_app Lam dots) T O IE :- !,
+    isa Lam (implies _ _) _ _, isa (impl_app (impl_app Lam Arg) dots) T O IE.
+
 isa (app Lam dots) T O IE :- isa Lam T O IE.
 isa (app Lam dots) T O IE :- !,
-    (isa Lam (forall _ _) _ _, !; 
-    isa Lam (implies _ _) _ _, !; 
-    isa Lam (setPi _ _) _ _),
-    isa (app (app Lam Arg) dots) T O IE.
+    isa Lam (setPi _ _) _ _, isa (app (app Lam Arg) dots) T O IE.
 
 % Named to unnamed
 of (elim_exist N1 N2 P T F) T (elim_exist N1 N2 P' T F') IE :-
