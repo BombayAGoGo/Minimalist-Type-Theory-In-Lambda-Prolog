@@ -808,9 +808,23 @@ typecheckStEx X TypeList
 
 testLib L :- 
     L = [
-        (univPi A\ locDefL setId (setPi A (_\ A)) (script [intro hyp, app hyp])),
-        (univProp A\ locDefL implId (implies A A) (script [implI hyp, implE hyp])),
-        %(univProp A\ locDefL forId (forall A (_\ A)))
+        (univPi A\ locDefL
+            setId
+            (setPi A (_\ A))
+            (script [intro hyp, app hyp])),
+        (univProp A\ locDefL
+            implId
+            (implies A A)
+            (script [implI hyp, implE hyp])),
+        %(univProp A\ locDefL forId (forall A (_\ A))) % buggato ma non so perche'
+        (univProp A\ univProp B\ locDefL
+            kCombProp
+            (implies A (implies B A))
+            (script [implI hyp, implI, implE hyp])),
+        (univPi A\ univPi B\ locDefL
+            kCombPi
+            (setPi A (_\ setPi B (_\ A)))
+            (script [intro x, intro, app x]))
     ].
 
 test_process_lib Lib Hyps :-
