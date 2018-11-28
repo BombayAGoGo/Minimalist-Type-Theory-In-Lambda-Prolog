@@ -25,19 +25,19 @@ pp (elim_exist N1 N2 P _ F) S :-
 
 % ---- FORALL
 pp (forall A B) S :-
-    pp A S1, pi x\ pp x Sx => pp (B x) S2,
+    pp A S1, (pi x\ pp x Sx => pp (B x) S2),
     S is "∀" ^ Sx ^ ": " ^ S1 ^ ".(" ^ Sx ^ ")" ^ S2. 
 pp (forall_lam N A F) S :-
-    pp A SA, pp N SN, pi x\ pp x SN => pp (F x) SF,
-    S is "λ" ^ SN ^ ": " ^ SA ^ ". " SF.
+    pp A SA, pp N SN, (pi x\ pp x SN => pp (F x) SF),
+    S is "λ" ^ SN ^ ": " ^ SA ^ ". " ^ SF.
 pp (forall_app Lam Arg) S :-
     pp Lam S1, pp Arg S2, S is "(" ^ S1 ^ " " ^ S2 ^ ")".
 
 % ---- IMPLIES
-pp (implies A B) S :- pp A SA, pp B SB, S is SA ^ " ⇒ " SB.
+pp (implies A B) S :- pp A SA, pp B SB, S is SA ^ " ⇒ " ^ SB.
 pp (impl_lam N A F) S :-
-    pp A SA, pp N SN, pi x\ pp x SN => pp (F x) SF,
-    S is "λ" ^ SN ^ ": " ^ SA ^ ". " SF.
+    pp A SA, pp N SN, (pi x\ pp x SN => pp (F x) SF),
+    S is "λ" ^ SN ^ ": " ^ SA ^ ". " ^ SF.
 pp (impl_app Lam Arg) S :-
     pp Lam S1, pp Arg S2, S is "(" ^ S1 ^ " " ^ S2 ^ ")".
 
@@ -71,7 +71,7 @@ pp (propId A X Y) S :-
 pp (id A X) S :- pp A SA, pp X SX, S is "id " ^ SA ^ " " ^ SX.
 pp (elim_id N P _ F) S :-
     pp P SP, pp N SN, (pi x\ pp x SN => pp (F x) SF),
-    S is "El_id(" ^ SP ^ ", (" SN ^ ")" ^ SF ^ ")". 
+    S is "El_id(" ^ SP ^ ", (" ^ SN ^ ")" ^ SF ^ ")". 
 
 % ---- SETPI
 pp (setPi T1 T2) S :-
@@ -97,7 +97,7 @@ pp (elim_setSigma N1 N2 Pair _ Func) S :-
     S is "El_Σ(" ^ SPair  ^ ", (" ^ SN1 ^ ", " ^ SN2 ^ ")" ^ SFunc ^ ")".
 
 % ---- SETSUM
-pp (setSum A B) S :- pp A SA, pp B SB, S is SA ^ " + " SB.
+pp (setSum A B) S :- pp A SA, pp B SB, S is SA ^ " + " ^ SB.
 pp (inr _ _ R) S :- pp R SR, S is "inr_+ " ^ SR.
 pp (inl _ _ L) S :- pp L SL, S is "inl_+ " ^ SL.
 pp (elim_setSum N1 N2 _ W Cl Cr) S :-
