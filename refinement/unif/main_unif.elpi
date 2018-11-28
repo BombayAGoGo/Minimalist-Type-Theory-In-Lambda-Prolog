@@ -16,7 +16,8 @@ mode (conv i i).
 conv X Y :- print (conv X Y), fail.
 conv X Y :- is_stuck X, is_stuck Y, !, conv_constraint X Y X Y.
 conv X Y :- (is_stuck X, !; is_stuck Y), !,
-    unwind_app X XApp XArgs , unwind_app Y YApp YArgs,
+    unwind_app X XApp XArgs, 
+    unwind_app Y YApp YArgs,
     unify XApp XArgs YApp YArgs.
 % If X or Y isn't stuck then it will become a `multi_app X/Y []` and later the
 % multi_app will be removed.
@@ -51,9 +52,11 @@ accumulate unify_redexes.
 % unwind app
 mode (unwind_app i o o).
 unwind_app X Out Args :-
-    unwind_app_aux X [] [] Out.
+    unwind_app_aux X [] Args Out.
 
-mode (unwind_app_aux i i i o).
+mode (unwind_app_aux i i o o).
+%unwind_app_aux A B C D :- print (unwind_app_aux A B C D), fail.
+%unwind_app_aux (uvar as X) AppTypes [] (multi_app X AppTypes) :- !.
 unwind_app_aux (app X Y) AppType Args Out :- !,
     append Args' [Y] Args,
     append [setPiApp] AppTypes AppTypes',
@@ -61,11 +64,11 @@ unwind_app_aux (app X Y) AppType Args Out :- !,
 unwind_app_aux (forall_app X Y) AppTypes Args Out :- !,
     append Args' [Y] Args,
     append [forallApp] AppTypes AppTypes',
-    unwind_app X Args' AppType'.
+    unwind_app X AppType' Args' Out.
 unwind_app_aux (impl_app X Y) AppTypes Args Out :- !,
     append Args' [Y] Args,
     append [implApp] AppTypes AppTypes',
-    unwind_app X Args' AppType'.
+    unwind_app X AppType' Args' Out.
 unwind_app_aux X AppTypes [] (multi_app X AppTypes).
 
 mode (rewind_app i i o).

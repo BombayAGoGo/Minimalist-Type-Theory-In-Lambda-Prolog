@@ -21,7 +21,6 @@ prove_goal (goal X _ _ _ as G) OG S :-
     itp_loop X (state [(1, G)] [] [] 1) [] OG S.
 
 
-% Old
 prove X Type ProofTerm OutScript :-
     prove X Type ProofTerm [] OutScript.
 
