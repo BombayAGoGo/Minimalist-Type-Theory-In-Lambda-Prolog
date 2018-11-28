@@ -6,8 +6,22 @@ mode (build_newgoals i i o).
 %build_newgoals A B C :- print (build_newgoals A B C), fail.
 
 build_newgoals (uvar K L as Y) VDecls NewGoals :- !,
+    shave_vars L VDecls L',
     lookdown Y VDecls X T,
-    NewGoals = [goal X T K VDecls].
+    apply_meta K L' Y',
+    print "new Y" Y',
+    NewGoals = [goal X T Y' VDecls].
+
+mode (shave_vars i i o).
+shave_vars Vars Decls ShavedVars :-
+    reverse Vars RVars, reverse Decls RDecls,
+    shave_vars_aux RVars RDecls ShavedVars.
+shave_vars_aux ([V|_] as Vs) [] RVs :- reverse Vs RVs.
+shave_vars_aux [_|Vs] [_|Ds] ShavedVars :- shave_vars_aux Vs Ds ShavedVars.
+
+mode (apply_meta i i o).
+apply_meta K [] K.
+apply_meta K [L|Ls] X :- apply_meta (K L) Ls X.
 
 % ---- AND ---- %
 

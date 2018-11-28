@@ -493,7 +493,7 @@ mode (create_copy_hyps i i i o o).
 create_copy_hyps A B C D E :- print (create_copy_hyps A B C D E), fail.
 create_copy_hyps [] [] [] [] [].
 create_copy_hyps [] [V1|V1s] [V2|V2s] [copy_var V2 V1|Hyps] Rem :-
-    append [V1] Rem' Rem,
+    append Rem' [V1] Rem,
     create_copy_hyps [] V1s V2s Hyps Rem'.
 create_copy_hyps [vdecl W _|Ws] [_|V1s] [V2|V2s] [copy_var V2 W|Hyps] Rem :-
     create_copy_hyps Ws V1s V2s Hyps Rem.

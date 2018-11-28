@@ -26,7 +26,8 @@ prove X Type ProofTerm OutScript :-
 
 prove X Type ProofTerm InScript OutScript :-
     of X Type ProofTerm _,
-    itp_loop X (state [(1, goal X Type ProofTerm [])] [] [] 1) InScript _ OutScript.
+    itp_loop X (state [(1, goal X Type ProofTerm [])] [] [] 1) InScript _ OutScript,
+    print "Total script: " OutScript.
 
 
 % Only common tactic: manual input i.e. a name from a proof assistant definition
