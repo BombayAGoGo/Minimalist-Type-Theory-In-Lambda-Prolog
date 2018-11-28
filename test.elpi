@@ -6,8 +6,6 @@ accumulate itp, refinement/all, calc/subst.%, calc/all.
 
 accumulate main.
 
-accumulate itp, refinement/all, calc/subst.%, calc/all.
-
 accumulate calc/and.
 accumulate calc/propEq.
 accumulate calc/forall.

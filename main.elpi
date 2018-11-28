@@ -31,6 +31,8 @@ type ofType             mttType -> mttKind -> mttLevel -> prop.
 %% "isa" checks if a term has type T, that is, if it is of some type T' such that T converts to T' (via conv)
 %type of, isa            mttTerm -> mttType -> mttLevel -> prop.
 type of, isa            mttTerm -> mttType -> mttTerm -> mttLevel -> prop.
+%of A B C D :- print "----" (of A B C D), fail.
+%isa A B C D :- print "----" (isa A B C D), fail.
 
 %of A B C D :- print "----" (of A B C D), fail.
 %isa A B C D :- print "----" (isa A B C D), fail.
@@ -608,7 +610,6 @@ process_entry (locDefL N TY) Hyp :-
     spy(isaType TY _ int),
     erase_var_app TY TY',
     prove TE TY' RTE _,
-    print "here", halt,
     Hyp = locDef N TY RTE,
     print "defined " N TY RTE,
     print "## New definition: " N.
