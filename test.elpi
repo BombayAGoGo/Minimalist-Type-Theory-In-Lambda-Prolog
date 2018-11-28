@@ -808,7 +808,9 @@ typecheckStEx X TypeList
 
 testLib L :- 
     L = [
-        (univProp A\ locDefL id (implies A A))
+        (univPi A\ locDefL setId (setPi A (_\ A)) (script [intro hyp, app hyp])),
+        (univProp A\ locDefL implId (implies A A) (script [implI hyp, implE hyp])),
+        %(univProp A\ locDefL forId (forall A (_\ A)))
     ].
 
 test_process_lib Lib Hyps :-
@@ -816,4 +818,4 @@ test_process_lib Lib Hyps :-
 
 process_entries [] [].
 process_entries [L|Ls] Hyps :-
-    process_entry L Hyp, append Hyp Hyps' Hyps, process_entries Ls Hyps'.
+    process_entry L Hyp, append [Hyp] Hyps' Hyps, process_entries Ls Hyps'.
