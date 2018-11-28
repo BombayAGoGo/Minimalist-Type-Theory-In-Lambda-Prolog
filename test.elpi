@@ -4,6 +4,8 @@ accumulate debug.
 
 accumulate main.
 
+accumulate itp, refinement/all, calc/subst.%, calc/all.
+
 accumulate calc/and.
 accumulate calc/propEq.
 accumulate calc/forall.
@@ -800,3 +802,18 @@ typecheckStEx X TypeList
     ,  debug => typecheckStExList Result TypeList
     .
 
+% ---------------------------------------------------------------------------- %
+% -------------------------------- ITP TESTS --------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+testLib L :- 
+    L = [
+        (univProp A\ locDefL id (implies A A))
+    ].
+
+test_process_lib Lib Hyps :-
+    Lib Ls, process_entries Ls Hyps.
+
+process_entries [] [].
+process_entries [L|Ls] Hyps :-
+    process_entry L Hyp, append Hyp Hyps' Hyps, process_entries Ls Hyps'.
