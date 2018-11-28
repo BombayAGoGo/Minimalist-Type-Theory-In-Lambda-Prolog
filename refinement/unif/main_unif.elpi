@@ -13,7 +13,7 @@ is_stuck (impl_app M _) :- is_stuck M.
 %is_stuck _ :- fail.
 
 mode (conv i i).
-conv X Y :- print (conv X Y), fail.
+conv X Y :- print "----" (conv X Y), fail.
 conv X Y :- is_stuck X, is_stuck Y, !, conv_constraint X Y X Y.
 conv X Y :- (is_stuck X, !; is_stuck Y), !,
     unwind_app X XApp XArgs, 
@@ -114,7 +114,7 @@ accumulate type_mimic.
 
 % PROJECTION
 % Invariant: Term is not a multi_app
-unify (uvar _ Vs as X) [] Term [] :- print "proj_term" X Term Args,
+unify (uvar _ Vs as X) [] Term [] :- !, print "proj_term" X Term Args,
     try_projection X Vs Term.
 % Invariant: Term is a multi_app -> non-empty args
 unify (uvar _ Vs as X) [] Term Args :- print "proj_app" X Term Args,
