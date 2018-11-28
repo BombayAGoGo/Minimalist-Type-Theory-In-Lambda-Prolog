@@ -33,8 +33,7 @@ of (elim_or N1 N2 T W Cl Cr) T (elim_or N1 N2 T W' Cl' Cr') IE :-
 of (elim_id N P C F) T (elim_id N P' C F') IE :- 
     of (elim_id P C F) T (elim_id P' C F') IE.
 
-of (lambda N A F) T (lambda N A F') IE :-
-    of (lambda A F) T (lambda A F') IE.
+of (lambda N A F) T (lambda N A F') IE :- of (lambda A F) T (lambda A F') IE.
 
 of (elim_setSigma N1 N2 P C F) T (elim_setSigma N1 N2 P' C F') IE :-
     of (elim_setSigma P C F) T (elim_setSigma P' C F') IE.
