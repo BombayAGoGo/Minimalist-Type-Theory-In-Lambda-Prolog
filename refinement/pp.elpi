@@ -15,19 +15,18 @@ pp (p2_and P) S :- pp P SP, S is "π₂(" ^ SP ^ ")".
 % ---- EXIST
 pp (exist A B) :-
     pp A S1, (pi x\ (pp x Sx, pp x Sx => pp (B x) S2)),
-    S is "∃" ^ Sx ^ ": " ^ S1 ^ ".(" ^ Sx ^ ")" ^ S2. 
+    S is "∃" ^ Sx ^ ": " ^ S1 ^ "." ^ S2. 
 pp (pair_exist _ _ P Q) S :-
     pp P S1, pp Q S2, S is "<" ^ S1 ^ ", " ^ S2 ^ ">".
 pp (elim_exist N1 N2 P _ F) S :-
     pp N1 SN1, pp N2 SN2, pp P SP,
     pi x y\ (pp x SN1, pp y SN2) => pp (F x y) SF,
-    S is "El_∃(" ^ SP ^ ", (" ^ SN1 ^ ", " ^ SN2 ")" ^ SF ^ ")".
+    S is "El_∃(" ^ SP ^ ", " ^ SN1 ^ " " ^ SN2 "\\ " ^ SF ^ ")".
 
 % ---- FORALL
 pp (forall A B) S :-
     pp A S1, (pi x\ (pp x Sx, pp x Sx => pp (B x) S2)),
-    print "----" S1 Sx S2,
-    S is "∀" ^ Sx ^ ": " ^ S1 ^ ".(" ^ Sx ^ ")" ^ S2. 
+    S is "∀" ^ Sx ^ ": " ^ S1 ^ "." ^ S2. 
 pp (forall_lam N A F) S :-
     pp A SA, pp N SN, (pi x\ pp x SN => pp (F x) SF),
     S is "λ" ^ SN ^ ": " ^ SA ^ ". " ^ SF.
@@ -77,7 +76,7 @@ pp (elim_id N P _ F) S :-
 % ---- SETPI
 pp (setPi A B) S :-
     pp A S1, (pi x\ (pp x Sx, pp x Sx => pp (B x) S2)),
-    S is "∏(" ^ S1 ^ ", (" ^ Sx ^ ")" ^ S2 ^ ")".
+    S is "∏(" ^ S1 ^ ", " ^ Sx ^ "\\ " ^ S2 ^ ")".
 pp (lambda N T F) S :-
     pp N SN, (pi x\ pp x SN => pp (F x) SF), pp T ST,
     S is "λ" ^ SN ^ ":" ^ ST ^ "." ^ SF.
@@ -87,7 +86,7 @@ pp dots "…".
 % ---- SETSIGMA
 pp (setSigma A B) S :-
     pp A S1, (pi x\ (pp x Sx, pp x Sx => pp (B x) S2)),
-    S is "Σ(" ^ S1 ^ ", (" ^ Sx ^ ")" ^ S2 ^ ")".
+    S is "Σ(" ^ S1 ^ ", " ^ Sx ^ "\\ " ^ S2 ^ ")".
 pp (pair _ _Left Right) S :-
     pp Left SLeft, pp Right SRight, S is "<" ^ SLeft ^ ", " ^ SRight ^ ">".
 pp (fst Pair) S :- pp Pair SPair, S is "π₁(" ^ SPair ^ ")".
