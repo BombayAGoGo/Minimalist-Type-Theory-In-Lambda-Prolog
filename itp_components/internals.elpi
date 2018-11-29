@@ -73,7 +73,7 @@ reachable_goal Term (goal X _ _ _) :-
 %   - restore the current list on top of the inactive list
 
 mode (process_tac i i o).
-process_tac A B C :- print (process_tac A B C), fail.
+%process_tac A B C :- print (process_tac A B C), fail.
 
 % ---- BRANCHING ---- %
 
@@ -484,13 +484,16 @@ constraint isa read-evar read-refined of {
           L1 = L1',
           reverse L1' RL1', reverse L2 RL2, reverse VDecls RVDecls,
           create_copy_hyps RVDecls RL2 RL1' Hyps Rem,
-          Hyps => copy_from_type Ty S, !;
+          print "copying" Ty,
+          Hyps => copy_from_type Ty S,
+          print "copied" Ty S,
+          !;
           print "align fail on" L1 "=" L1', halt)
         <=> (E2: (X = uvar K Rem, T = S)).
 }
 
 mode (create_copy_hyps i i i o o).
-create_copy_hyps A B C D E :- print (create_copy_hyps A B C D E), fail.
+%create_copy_hyps A B C D E :- print (create_copy_hyps A B C D E), fail.
 create_copy_hyps [] [] [] [] [].
 create_copy_hyps [] [V1|V1s] [V2|V2s] [copy_var V2 V1|Hyps] Rem :-
     append Rem' [V1] Rem,

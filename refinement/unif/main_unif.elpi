@@ -13,7 +13,7 @@ is_stuck (impl_app M _) :- is_stuck M.
 %is_stuck _ :- fail.
 
 mode (conv i i).
-conv X Y :- print "----" (conv X Y), fail.
+%conv X Y :- print "----" (conv X Y), fail.
 conv X Y :- is_stuck X, is_stuck Y, !, conv_constraint X Y X Y.
 conv X Y :- (is_stuck X, !; is_stuck Y), !,
     unwind_app X XApp XArgs, 

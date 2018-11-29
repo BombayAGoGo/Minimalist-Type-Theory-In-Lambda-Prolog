@@ -9,7 +9,6 @@ build_newgoals (uvar K L as Y) VDecls NewGoals :- !,
     shave_vars L VDecls L',
     lookdown Y VDecls X T,
     apply_meta K L' Y',
-    print "new Y" Y',
     NewGoals = [goal X T Y' VDecls].
 
 mode (shave_vars i i o).
