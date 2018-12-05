@@ -484,10 +484,7 @@ constraint isa read-evar read-refined of {
           L1 = L1',
           reverse L1' RL1', reverse L2 RL2, reverse VDecls RVDecls,
           create_copy_hyps RVDecls RL2 RL1' Hyps Rem,
-          print "copying" Ty,
-          Hyps => copy_from_type Ty S,
-          print "copied" Ty S,
-          !;
+          Hyps => copy_from_type Ty S, !;
           print "align fail on" L1 "=" L1', halt)
         <=> (E2: (X = uvar K Rem, T = S)).
 }

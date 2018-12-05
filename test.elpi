@@ -818,25 +818,24 @@ testLib L :-
             (script [implI hyp, implE hyp])),
 % buggato ma non so perche' -> non riesce a convertire il tipo forall effettivo
 % col forall con meta dopo l'assegnamento di forall_lam tramite tattica
-        %(univProp A\ locDefL forId (forall A (_\ A))),
+        %(univProp A\ locDefL forId (forall A (_\ A)))
         (univProp A\ univProp B\ locDefL
             kCombProp
             (implies A (implies B A))
             (script [implI hyp, implI, implE hyp])),
-        (univPi A\ univDepPi A B\ locDefL  % problema con (A B)
+        (univPi A\ univDepPi A B\ locDefL
             kCombPi
-            (setPi A (x\ setPi (# B x) (_\ A))))
+            (setPi A (x\ setPi (# B x) (_\ A)))
+            (script [intro x, intro, app x])),
         %(univProp A\ univProp B\ locDefL   % buggato come l'altro
         %    kCombForall
         %    (forall A (_\ forall B (_\ A))))
-/*
         (univPi A\ univDepPi A B\ univDepPi (setPi A B) C\ locDefL
             sCombPi
             (setPi
                 (setPi A (x\ setPi (# B x) (y\ (# (# C x) y))))
                 (_\ setPi (setPi A B) (f\ setPi A (x\ (# (# C x) (app f x))))))
         )
-*/
     ].
 
 test_process_lib Lib Hyps :-
