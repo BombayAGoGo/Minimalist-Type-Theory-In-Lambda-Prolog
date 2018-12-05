@@ -34,9 +34,6 @@ type of, isa            mttTerm -> mttType -> mttTerm -> mttLevel -> prop.
 %of A B C D :- print "----" (of A B C D), fail.
 %isa A B C D :- print "----" (isa A B C D), fail.
 
-%of A B C D :- print "----" (of A B C D), fail.
-%isa A B C D :- print "----" (isa A B C D), fail.
-
 %% local definitions and type definitions
 type locDef         mttTerm -> mttType -> mttTerm -> prop.
 type locTypeDef     mttType -> mttKind -> mttType -> prop.
