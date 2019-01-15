@@ -2,7 +2,7 @@
 % and vv i.e. to properly copy a type which could contain bindings or fresh
 % variabiles and so on.
 
-% During itp we add `copyvar ci atom` clauses that are used here. If we are
+% During itp we add `copy_var ci atom` clauses that are used here. If we are
 % copying from a type then we'll copy X to Y where X is an eigenvariable, if we
 % are copying to a type then we'll copy X to Y where Y is and eigenvariable
 
@@ -276,5 +276,5 @@ copy_from_type X Y :-
 
 % This shouldn't happen
 copy_from_type X Y :-
-    const X, print "const case" X, halt.
-    % const X HD [], Y = X.
+    constant X, print "constant case" X, halt.
+    % constant X HD [], Y = X.

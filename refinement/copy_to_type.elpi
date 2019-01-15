@@ -263,16 +263,18 @@ copy_to_type (elim_singleton T C X) (elim_singleton S D Y) :-
 
 % XXX: Here X is a term possibily containing atoms, not only fresh vars
 
-% Invariant: for each const there should be a `copy_var ci const`
-% Not applied const
-copy_to_type X Y :-
-    const X _ [], !,
-    (copy_var Y X, !; X = Y, print "error: const without copy").
+% Invariant: for each constant there should be a `copy_var ci constant`
+% Not applied constant
 
-% Applied const
+copy_to_type X Y :-
+    (name X H T, print X H T);
+    constant X _ [], !,
+    (copy_var Y X, !; X = Y, print "error: constant without copy").
+
+% Applied constant
 % Fresh var with args
 copy_to_type X Y :-
-    const X HD TL, !,
+    constant X HD TL, !,
     copy_to_type HD HD',
     copy_to_type TL TL', 
     rebuild_app TL' HD' Y.
@@ -287,4 +289,5 @@ copy_to_type X Y :-
     name X HD TL, !,
     copy_to_type HD HD',
     copy_to_type TL TL', 
+    print "copied" TL TL',
     rebuild_app TL' HD' Y.

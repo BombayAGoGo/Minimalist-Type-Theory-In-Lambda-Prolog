@@ -825,7 +825,8 @@ testLib L :-
             (script [implI hyp, implI, implE hyp])),
         (univPi A\ univDepPi A B\ locDefL
             kCombPi
-            (setPi A (x\ setPi (# B x) (_\ A)))),
+            (setPi A (x\ setPi (B x) (_\ A)))
+            (script [intro x, intro, app x])),
         (univPi A\ univPi B\ locDefL
             nonDepAnd
             (setPi A (_\ setPi B (_\ setSigma A (_\ B)))))
