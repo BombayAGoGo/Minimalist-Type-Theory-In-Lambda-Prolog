@@ -5,6 +5,8 @@
 % INVARIANT: here we only deal with terms without names since conversion takes
 %            them out before arriving here
 
+%of A B C D :- print (of A B C D), fail.
+
 mode (is_stuck i).
 is_stuck uvar.
 is_stuck (app M _) :- is_stuck M.
@@ -18,6 +20,7 @@ conv X Y :- is_stuck X, is_stuck Y, !, conv_constraint X Y X Y.
 conv X Y :- (is_stuck X, !; is_stuck Y), !,
     unwind_app X XApp XArgs, 
     unwind_app Y YApp YArgs,
+    %print "after unwind" XApp XArgs YApp YArgs, read _,
     unify XApp XArgs YApp YArgs.
 % If X or Y isn't stuck then it will become a `multi_app X/Y []` and later the
 % multi_app will be removed.
@@ -41,7 +44,7 @@ accumulate catch_redexes.
 macro @unify T S :- unify T [] S [].
 
 mode (unify i i i i).
-unify A B C D :- print (unify A B C D), fail.
+%unify A B C D :- print (unify A B C D), fail.
 
 % delay flex-flex
 unify (uvar as X) [] (uvar as Y) [] :- !,
@@ -51,24 +54,24 @@ accumulate unify_redexes.
 
 % unwind app
 mode (unwind_app i o o).
-unwind_app X Out Args :-
-    unwind_app_aux X [] Args Out.
+%unwind_app A B C :- print (unwind_app A B C), fail.
+unwind_app X Out Args :- unwind_app_aux X [] Args Out.
 
 mode (unwind_app_aux i i o o).
-%unwind_app_aux A B C D :- print (unwind_app_aux A B C D), fail.
+unwind_app_aux A B C D :- print (unwind_app_aux A B C D), fail.
 %unwind_app_aux (uvar as X) AppTypes [] (multi_app X AppTypes) :- !.
-unwind_app_aux (app X Y) AppType Args Out :- !,
+unwind_app_aux (app X Y) AppTypes Args Out :- !,
     append Args' [Y] Args,
     append [setPiApp] AppTypes AppTypes',
-    unwind_app X AppType' Args' Out.
+    unwind_app_aux X AppTypes' Args' Out.
 unwind_app_aux (forall_app X Y) AppTypes Args Out :- !,
     append Args' [Y] Args,
     append [forallApp] AppTypes AppTypes',
-    unwind_app X AppType' Args' Out.
+    unwind_app_aux X AppTypes' Args' Out.
 unwind_app_aux (impl_app X Y) AppTypes Args Out :- !,
     append Args' [Y] Args,
     append [implApp] AppTypes AppTypes',
-    unwind_app X AppType' Args' Out.
+    unwind_app_aux X AppTypes' Args' Out.
 unwind_app_aux X AppTypes [] (multi_app X AppTypes).
 
 mode (rewind_app i i o).
@@ -87,8 +90,9 @@ rewind_app_aux App [implApp|ATs] [L|Ls] Out :-
 
 % Meta with args is a lambda/forall_lam/impl_lam
 unify (multi_app (uvar as X) [setPiApp|ATs]) [L|Ls] T L' :- !, 
-    print "lam" X L T L',
+    %print "lam" X L T L',
     of L LTy _ _, X = lambda LTy F,
+    %read _,
     pi x\ (locDecl x LTy, copy x L) => unify (multi_app (F x) ATs) Ls T L'.
 
 unify (multi_app (uvar as X) [forallApp|ATs]) [L|Ls] T L' :- !, 
