@@ -53,8 +53,9 @@ filter_code_list [H|TL] Result
     .
 filter_code_list [] [].
 
-translate_entry Entry LibMap ExtrEntry OutLib Result
+translate_entry Entry# LibMap ExtrEntry OutLib Result
     :- Context = (context [] [] LibMap)
+    ,  erase_var_app Entry# Entry
     ,  spy(starify_lib Entry LibMap StarEntry)
     ,  spy(extract_lib StarEntry ExtrEntry Context ArgMask [] OutList)
     ,  spy(translate_lib ExtrEntry [] LibMap Code)
@@ -76,9 +77,9 @@ translate_library [Entry|TL] LibMap Result
 translate_library [] _ [].
 
 /*
-%24
-translate_entry_from_library [_|TL] LibMap 5 Result
-    :- translate_entry_from_library TL LibMap 4 Result
+%26
+translate_entry_from_library [_|TL] LibMap 7 Result
+    :- translate_entry_from_library TL LibMap 6 Result
     ,  !
     .
 */
@@ -98,9 +99,6 @@ translate_entry_from_library [Entry|TL] LibMap Index Result
     ,  !
     .
 translate_entry_from_library [] _ _ [].
-
-type contains_# A -> prop.
-contains_# A :- ((term_to_string A S, rex_match "^.*#.*$" S, halt), !; true).
 
 %% Lib Extraction
 
@@ -154,8 +152,7 @@ starify_lib (univPiT T F) LibMap Result
 
 starify_lib (univDepPiT Ai Bi F) LibMap Result
     :- starify_type Ai LibMap Ai'
-    ,  spy((name Bi, Bi' = Bi)
-        , !; pi x\ of x Ai int => starify_type (Bi x) LibMap (Bi' x))
+    ,  spy(pi x\ of x Ai int => starify_type (Bi x) LibMap (Bi' x))
     ,  pi t\ (pi x\ ofType (Bi x) set int :- isa x Ai int) =>
         (pi x\ pi y\ dconv (Bi x) (Bi y) :- conv x y) =>
             (pi x\ of (t x) (Bi x) int :- isa x Ai int) =>
@@ -176,28 +173,78 @@ starify_lib (locTypeDefL N KIND TY) LibMap Result
     ,  !
     .
 
-%starify_lib_prop _ true.
-starify_lib_prop A A.
+%% prop starification begin
+starify_lib_prop (pi a\ H a) LibMap Result
+    :- spy(pi a\ starify_lib_prop (H a) LibMap (H' a))
+    ,  Result = (pi a\ H' a)
+    ,  !
+    .
+starify_lib_prop (isa X T @level => B) LibMap Result
+    :- name X X []
+    ,  spy(starify_type T LibMap T')
+    ,  spy(locDecl X T => starify_lib_prop B LibMap B')
+    ,  Result = (isa X T' @level => B')
+    ,  !
+    .
+starify_lib_prop (locDecl X T => B) LibMap Result
+    :- name X X []
+    ,  spy(starify_type T LibMap T')
+    ,  spy(locDecl X T => starify_lib_prop B LibMap B')
+    ,  Result = (locDecl X T' => B')
+    ,  !
+    .
+starify_lib_prop (conv X Y => B) LibMap Result
+    :- starify_lib_prop (conv X Y) LibMap (conv X' Y')
+    ,  starify_lib_prop B LibMap B'
+    ,  Result = (conv X' Y' => B')
+    ,  !
+    .
+starify_lib_prop (conv A B) LibMap Result
+    :- spy(starify_term A LibMap A')
+    ,  spy(starify_term B LibMap B')
+    ,  Result = (conv A' B')
+    ,  !
+    .
+starify_lib_prop (conv_trans X Y Z) LibMap Result
+    :- spy(starify_term X LibMap X')
+    ,  spy(starify_term Y LibMap Y')
+    ,  spy(starify_term Z LibMap Z')
+    ,  Result = (conv_trans X' Y' Z')
+    ,  !
+    .
+starify_lib_prop (conv_trans_symm X Y Z) LibMap Result
+    :- starify_term X LibMap X'
+    ,  starify_term Y LibMap Y'
+    ,  starify_term Z LibMap Z'
+    ,  Result = (conv_trans_symm X' Y' Z')
+    ,  !
+    .
+starify_lib_prop (conv_symm X Y) LibMap Result
+    :- starify_term X LibMap X'
+    ,  starify_term Y LibMap Y'
+    ,  Result = (conv_symm X' Y')
+    ,  !
+    .
+starify_lib_prop (spy A) LibMap Result
+    :- starify_lib_prop A LibMap A'
+    ,  Result = (spy A')
+    ,  !
+    .
+starify_lib_prop true _ true :- !.
+%% prop starification end
 
 starify_lib (hyp H1 H2 E) LibMap Result
-    :- starify_lib_prop H1 H1'
-    ,  starify_lib_prop H2 H2'
-    ,  (erase_var_app H1' Hyp, Hyp => starify_lib E LibMap E')
+    :- spy(starify_lib_prop H1 LibMap H1')
+    ,  spy(starify_lib_prop H2 LibMap H2')
+    ,  (H1' => starify_lib E LibMap E')
     ,  spy(Result = (hyp H1' H2' E')) 
     ,  !
     .
 starify_lib (cut H E) LibMap Result
-    :- starify_lib_prop H H'
-    ,  (erase_var_app H' HH, process_cut HH Hyp, Hyp => starify_lib E LibMap E')
+    :- starify_lib_prop H LibMap H'
+    ,  (process_cut H' Hyp, Hyp => starify_lib E LibMap E')
     ,  spy(Result = (cut H' E')) 
     ,  !
-    .
-
-type erase_and_conv A -> A -> prop.
-erase_and_conv A B
-    :- spy(erase_var_app A A')
-    ,  spy(erase_var_app B B')
-    ,  spy(conv A' B')
     .
 
 conditional_fail Bool :- Bool = true.
@@ -342,7 +389,7 @@ extract_lib (univDepProp Bi F) Result Context [TakeArg|ArgMask] BodyList SetList
 
 %% 1 -> N  ==>  N
 collapse_lib (univPiT T F) Result Context false BodyList SetList
-    :- erase_and_conv T extractor_singleton
+    :- conv T extractor_singleton
     ,  spy(extract_lib (F extractor_star) Result Context _ArgMask BodyList SetList)
     ,  !
     .
@@ -365,7 +412,7 @@ extract_lib (univPiT T F) Result Context [TakeArg|ArgMask] BodyList SetList
 
 %% 1 -> N  ==>  N
 collapse_lib (univDepPiT _Ai Bi F) Result Context false BodyList SetList
-    :- erase_and_conv Bi (_\extractor_singleton)
+    :- (pi x\ conv (Bi x) extractor_singleton)
     ,  spy(extract_lib (F (_\extractor_star)) Result Context _ArgMask BodyList SetList)
     ,  !
     .
@@ -379,11 +426,9 @@ collapse_lib (univDepPiT Ai Bi F) Result _ false _ []
 extract_lib (univDepPiT Ai Bi F) Result Context [TakeArg|ArgMask] BodyList SetList
     :- Context = (context Vars VarMap LibMap)
     ,  spy(extract_type Ai Ai' Context AiList)
-    ,  spy((name Bi, Bi' = Bi, BiList = [])
-        , !; pi x\ of x Ai int => pi y\ of y Ai' int =>
-            extract_type (Bi x) (Bi' y)
-            (context [var_term _ y|[var_term _ x|Vars]] [var_mapping x y|VarMap] LibMap)
-            BiList)
+    ,  spy(pi x\ of x Ai int => pi y\ of y Ai' int => extract_type (Bi x) (Bi' y)
+        (context [var_term _ y|[var_term _ x|Vars]] [var_mapping x y|VarMap] LibMap)
+        BiList)
     ,  pi x\ of x Ai int => pi t\ (pi x\ ofType (Bi x) set int :- isa x Ai int) =>
        pi y\ of y Ai' int => pi g\ (pi y\ ofType (Bi' y) set int :- isa y Ai' int) =>
         (pi x\ pi y\ dconv (Bi x) (Bi y) :- conv x y) =>
@@ -433,130 +478,111 @@ extract_lib (locTypeDefL N _KIND TY) Result Context [] BodyList SetList
 
 
 %% prop extraction begin: prop extraction assumes that no extraction of reabstreacted terms is needed
-construct_implication_ [H|[]] Result
-    :- Result = H
-    ,  !
-    .
-construct_implication_ [H|TL] Result
-    :- construct_implication_ TL TL'
-    ,  Result = (H => TL')
-    .
-construct_implication List Result
-    :- reverse List RList
-    ,  spy(construct_implication_ RList Result)
-    .
-
-/*
-collapse_lib_prop (pi b\ H' b) Result Context
+collapse_lib_prop (pi b\ H' b) Result
     :- (H' extractor_star) = (locDecl extractor_star extractor_singleton => B)
-%    ,  spy(extract_lib_prop B B' Context _)
     ,  Result = B
     ,  !
     .
-collapse_lib_prop (pi b\ H' b) Result Context
+collapse_lib_prop (pi b\ H' b) Result
     :- (H' extractor_star) = (isa extractor_star extractor_singleton @level => B)
-%    ,  spy(extract_lib_prop B B' Context _)
     ,  Result = B
     ,  !
     .
-*/
-collapse_lib_prop (pi b\ H' b) Result _
+collapse_lib_prop (pi b\ H' b) Result
     :- spy(Result = (pi b\ H' b))
     .
 
-extract_lib_prop (pi a\ H a) Result Context NewDecl
+extract_lib_prop (pi a\ H a) Result Context
     :- Context = (context Vars VarMap LibMap)
-    ,  pi a\ pi b\ spy(extract_lib_prop (H a) (H' b)
-                       (context Vars [(var_mapping a b)|VarMap] LibMap)
-                       NewDecl)
-    ,  spy(collapse_lib_prop (pi b\ H' b) Result Context)
+    ,  spy(pi a\ pi b\ extract_lib_prop (H a) (H' b) (context Vars [(var_mapping a b)|VarMap] LibMap))
+    ,  spy(collapse_lib_prop (pi b\ H' b) Result)
     ,  !
     .
-extract_lib_prop (isa X T @level) Result Context NewDecl
-    :- spy(extract_term X X' Context [])
+extract_lib_prop (isa X T @level => B) Result Context
+    :- Context = (context _ VarMap _), spy(map_var X VarMap X')
     ,  spy(extract_type T T' Context [])
-    ,  Result = (isa X' T' @level), NewDecl = [locDecl X' T'|[locDecl X T]]
+    ,  spy(locDecl X T => locDecl X' T' => extract_lib_prop B B' Context)
+    ,  Result = (isa X' T' @level => B')
     ,  !
     .
-extract_lib_prop (locDecl X T) Result Context []
-    :- spy(extract_term X X' Context [])
+extract_lib_prop (locDecl X T => B) Result Context
+    :- Context = (context _ VarMap _), spy(map_var X VarMap X')
     ,  spy(extract_type T T' Context [])
-    ,  Result = (locDecl X' T')
+    ,  spy(locDecl X T => locDecl X' T' => extract_lib_prop B B' Context)
+    ,  Result = (locDecl X' T' => B')
     ,  !
     .
-extract_lib_prop (A => B) Result Context NewDecl
-    :- spy(extract_lib_prop A A' Context ADecl)
-    ,  spy(construct_implication [extract_lib_prop B B' Context NewDecl|[A'|[A|ADecl]]] ImpliesB)
-    ,  spy(ImpliesB)
-    ,  spy(Result = (A' => B'))
+extract_lib_prop (conv X Y => B) Result Context
+    :- spy(extract_lib_prop (conv X Y) (conv X' Y') Context)
+    ,  spy(extract_lib_prop B B' Context)
+    ,  Result = (conv X' Y' => B')
     ,  !
     .
-extract_lib_prop (conv A B) Result Context []
+extract_lib_prop (conv A B) Result Context
     :- spy(extract_term A A' Context [])
     ,  spy(extract_term B B' Context [])
     ,  spy(Result = (conv A' B'))
     ,  !
     .
-extract_lib_prop (conv_trans X Y Z) Result Context []
+extract_lib_prop (conv_trans X Y Z) Result Context
     :- spy(extract_term X X' Context [])
     ,  spy(extract_term Y Y' Context [])
     ,  spy(extract_term Z Z' Context [])
     ,  spy(Result = (conv_trans X' Y' Z'))
     ,  !
     .
-extract_lib_prop (conv_trans_symm X Y Z) Result Context []
+extract_lib_prop (conv_trans_symm X Y Z) Result Context
     :- spy(extract_term X X' Context [])
     ,  spy(extract_term Y Y' Context [])
     ,  spy(extract_term Z Z' Context [])
     ,  spy(Result = (conv_trans_symm X' Y' Z'))
     ,  !
     .
-extract_lib_prop (conv_symm X Y) Result Context []
+extract_lib_prop (conv_symm X Y) Result Context
     :- spy(extract_term X X' Context [])
     ,  spy(extract_term Y Y' Context [])
     ,  spy(Result = (conv_symm X' Y'))
     ,  !
     .
-extract_lib_prop (spy A) Result Context NewDecl
-    :- spy(extract_lib_prop A A' Context NewDecl)
+extract_lib_prop (spy A) Result Context
+    :- spy(extract_lib_prop A A' Context)
     ,  spy(Result = (spy A'))
     ,  !
     .
-extract_lib_prop true true _ [].
+extract_lib_prop true true _.
+%% prop extraction end
 
 get_call_type (hyp _ _ E) Result :- get_call_type E Result.
 get_call_type (cut _ E) Result :- get_call_type E Result.
 get_call_type (locTypeDefL _ _ T) T.
 get_call_type (locDefL _ T _) T.
-%% prop extraction end
 
 collapse_lib (hyp _ _ E) Result Context true BodyList []
     :- get_call_type E T
-    ,  erase_and_conv T extractor_singleton
+    ,  conv T extractor_singleton
     ,  extract_lib E Result Context _ArgMask BodyList []
     ,  !
     .
 
 extract_lib (hyp H1 H2 E) Result Context ArgMask BodyList SetList
-    :- spy(extract_lib_prop H1 H1' Context _)
-    ,  spy(extract_lib_prop H2 H2' Context _)
-    ,  erase_var_app H1 Hyp, erase_var_app H1' Hyp'
-    ,  spy(Hyp => Hyp' => extract_lib E E' Context ArgMask [body H2'|[body H1'|BodyList]] SetList)
+    :- spy(extract_lib_prop H1 H1' Context)
+    ,  spy(extract_lib_prop H2 H2' Context)
+    ,  spy(H1 => H1' => extract_lib E E' Context ArgMask [body H2'|[body H1'|BodyList]] SetList)
     ,  spy(collapse_lib (hyp H1' H2' E') Result Context true BodyList [])
     ,  !
     .
 
 collapse_lib (cut _ E) Result Context true BodyList []
     :- get_call_type E T
-    ,  erase_and_conv T extractor_singleton
+    ,  conv T extractor_singleton
     ,  extract_lib E Result Context _ArgMask BodyList []
     ,  !
     .
 
 extract_lib (cut H E) Result Context ArgMask BodyList SetList
-    :- spy(extract_lib_prop H H' Context _)
-    ,  erase_var_app H HH, spy(process_cut HH Hyp)
-    ,  erase_var_app H' HH', spy(process_cut HH' Hyp')
+    :- spy(extract_lib_prop H H' Context)
+    ,  spy(process_cut H Hyp)
+    ,  spy(process_cut H' Hyp')
     ,  spy(Hyp => Hyp' => extract_lib E E' Context ArgMask [body H'|BodyList] SetList)
     ,  spy(collapse_lib (cut H' E') Result Context true BodyList [])
     ,  !
@@ -637,11 +663,11 @@ stylized_type_of (univDepPiT Ai Bi F) [Arg|ArgTL] [var_dep_term _ _ Ai|KindTL]
     .
 
 stylized_type_of (hyp H1 _ E) ArgTL KindTL
-    :- (erase_var_app H1 Hyp, Hyp => stylized_type_of E ArgTL KindTL)
+    :- (H1 => stylized_type_of E ArgTL KindTL)
     ,  !
     .
 stylized_type_of (cut H E) ArgTL KindTL
-    :- (erase_var_app H HH, process_cut HH Hyp, Hyp => stylized_type_of E ArgTL KindTL)
+    :- (process_cut H Hyp, Hyp => stylized_type_of E ArgTL KindTL)
     ,  !
     .
 
@@ -659,14 +685,12 @@ starify_arg (var_term _ _) A LibMap Result
     ,  !
     .
 starify_arg (var_dep_type _ _ X) A LibMap Result
-    :-  spy((name A, A' = A)
-        , !; pi x\ locDecl x X => starify_type (A x) LibMap (A' x))
+    :-  spy(pi x\ locDecl x X => starify_type (A x) LibMap (A' x))
     ,  Result = A'
     ,  !
     .
 starify_arg (var_dep_term _ _ X) A LibMap Result
-    :- spy((name A, A' = A)
-        , !; pi x\ locDecl x X => starify_term (A x) LibMap (A' x))
+    :- spy(pi x\ locDecl x X => starify_term (A x) LibMap (A' x))
     ,  Result = A'
     ,  !
     .
@@ -695,74 +719,93 @@ starify_lib_call A LibMap Result
 starify_type_ set A _ A :- !.
 starify_type_ col propS _ extractor_singleton :- !.
 starify_type_ col A _ A :- !.
-starify_type_ _   A _ A :- spy(name A), !.
-starify_type_ _   A Context Result :- starify_lib_call A Context Result, !.
+starify_type_ _   A _ A :- spy(name A A []), !.
+starify_type_ _   A LibMap Result :- starify_lib_call A LibMap Result, !.
 %starify_type_ _   _ _ extractor_singleton.
 
 
 
-starify_type (decode A) Context Result
-    :- starify_term A Context A'
+starify_type (decode A) LibMap Result
+    :- starify_term A LibMap A'
     ,  Result = (decode A')
     ,  !
     .
 
-starify_type (lib_app H A) Context Result
+starify_type (lib_app H A) LibMap Result
     :- !
-    ,  spy(starify_lib_call (lib_app H A) Context Result)
+    ,  spy(starify_lib_call (lib_app H A) LibMap Result)
     ,  !
     .
 
-starify_type (# X Y) Context Result
-    :- of Y TY @level
-    ,  ((name X, X' = X), !; pi y\ locDecl y TY => starify_type (X y) Context (X' y))
-    ,  starify_term Y Context Y'
-    ,  Result = (# X' Y')
+starify_type (# X Y) LibMap Result
+    :- name X X []
+    ,  starify_term Y LibMap Y'
+    ,  Result = (# X Y')
+    ,  !
+    .
+starify_type A LibMap Result
+    :- spy(name A X [Y])
+    ,  starify_term Y LibMap Y'
+    ,  Result = (X Y')
     ,  !
     .
 
-starify_type TA Context Result
-    :- ofType TA AKind @level
-    ,  spy(starify_type_ AKind TA Context Result)
+starify_type TA LibMap Result
+    :- spy(ofType TA AKind @level)
+    ,  spy(starify_type_ AKind TA LibMap Result)
     ,  !
     .
 
 starify_term_ set A _ A :- !.
 starify_term_ col A _ A :- !.
-starify_term_ _   A _ A :- spy(name A), !.
-starify_term_ _   A Context Result :- starify_lib_call A Context Result, !.
+starify_term_ _   A _ A :- spy(name A A []), !.
+starify_term_ _   A LibMap Result :- starify_lib_call A LibMap Result, !.
 %starify_term_ _   _ _ extractor_star.
 
-starify_term (encode A) Context Result
-    :- starify_type A Context A'
+starify_term (encode A) LibMap Result
+    :- starify_type A LibMap A'
     ,  Result = (encode A')
     ,  !
     .
 
-starify_term (lib_app H A) Context Result
+starify_term (lib_app H A) LibMap Result
     :- !
-    ,  spy(starify_lib_call (lib_app H A) Context Result)
+    ,  spy(starify_lib_call (lib_app H A) LibMap Result)
     ,  !
     .
 
-starify_term (# X Y) Context Result
-    :- of Y TY @level
-    ,  ((name X, X' = X), !; pi y\ locDecl y TY => starify_term (X y) Context (X' y))
-    ,  starify_term Y Context Y'
-    ,  Result = (# X' Y')
-    ,  !
-    .
-
-starify_term (fixMe M T) Context Result
-    :- starify_type T Context T'
+starify_term (fixMe M T) LibMap Result
+    :- starify_type T LibMap T'
     ,  Result = (fixMe M T')
     ,  !
     .
 
-starify_term A Context Result
+starify_term (# X Y) LibMap Result
+    :- name X X []
+    ,  starify_term Y LibMap Y'
+    ,  Result = (# X Y')
+    ,  !
+    .
+starify_term A LibMap Result
+    :- name A X [Y]
+    ,  starify_term Y LibMap Y'
+    ,  Result = (X Y')
+    ,  !
+    .
+/*
+starify_term [H|TL] LibMap Result
+    :- starify_term H' LibMap TL'
+    ,  starify_term TL LibMap TL'
+    ,  Result = [H'|TL']
+    ,  !
+    .
+starify_term [] _ [].
+*/
+
+starify_term A LibMap Result
     :- of A TA @level
     ,  ofType TA AKind @level
-    ,  spy(starify_term_ AKind A Context Result)
+    ,  spy(starify_term_ AKind A LibMap Result)
     ,  !
     .
 
@@ -868,23 +911,19 @@ extract_arg (var_term _ _) A Result Context SetList
     .
 extract_arg (var_dep_type _ _ X) A Result Context SetList
     :- Context = (context Vars VarMap LibMap)
-    ,  spy((name A, spy(map_var A VarMap A'), SetList = [])
-        , !; extract_type X Y Context _,
-             pi x\ locDecl x X => pi y\ locDecl y Y =>
-                extract_type (A x) (A' y)
-                (context [var_term _ y|[var_term _ x|Vars]] [var_mapping x y|VarMap] LibMap)
-                SetList)
+    ,  spy(extract_type X Y Context _, pi x\ locDecl x X => pi y\ locDecl y Y =>
+        extract_type (A x) (A' y)
+            (context [var_term _ y|[var_term _ x|Vars]] [var_mapping x y|VarMap] LibMap)
+            SetList)
     ,  Result = A'
     ,  !
     .
 extract_arg (var_dep_term _ _ X) A Result Context SetList
     :- Context = (context Vars VarMap LibMap)
-    ,  spy((name A, map_var A VarMap A', SetList = [])
-        , !; extract_type X Y Context _,
-             pi x\ locDecl x X => pi y\ locDecl y Y =>
-                extract_term (A x) (A' y)
-                (context [var_term _ y|[var_term _ x|Vars]] [var_mapping x y|VarMap] LibMap)
-                SetList)
+    ,  spy(extract_type X Y Context _, pi x\ locDecl x X => pi y\ locDecl y Y =>
+        extract_term (A x) (A' y)
+            (context [var_term _ y|[var_term _ x|Vars]] [var_mapping x y|VarMap] LibMap)
+            SetList)
     ,  Result = A'
     ,  !
     .
@@ -959,24 +998,24 @@ extract_type (lib_app H A) Result Context SetList
     ,  !
     .
 
+extract_type extractor_singleton extractor_singleton _ [] :- !.
+
 extract_type (# X Y) Result Context SetList
-    :- Context = (context Vars VarMap LibMap)
-    ,  spy(extract_term Y Y' Context YList)
-    ,  spy(of Y TY @level), spy(of Y' TY' @level)
-    ,  ((spy(name X), spy(map_var X VarMap X'), spy(XList = []))
-        , !; pi y\ locDecl y TY => pi s\ locDecl s TY' =>
-            extract_type (X y) (X' s)
-            (context [var_term _ s|[var_term _ y|Vars]] [var_mapping y s|VarMap] LibMap)
-            XList)
-    ,  spy(concat [YList, XList] SetList)
+    :- name X X []
+    ,  Context = (context _ VarMap _), spy(map_var X VarMap X')
+    ,  spy(extract_term Y Y' Context SetList)
     ,  spy(collapse_type (# X' Y') Result Context [])
     .
+extract_type A Result Context SetList
+    :- name A X [Y]
+    ,  Context = (context _ VarMap _), spy(map_var X VarMap X')
+    ,  spy(extract_term Y Y' Context SetList)
+    ,  spy(collapse_type (X' Y') Result Context [])
+    .
 
-extract_type extractor_singleton extractor_singleton _ [] :- !.
 extract_type A Result Context []
-    :- name A
-    ,  Context = (context _ VarMap _)
-    ,  map_var A VarMap Result
+    :- name A A []
+    ,  Context = (context _ VarMap _), map_var A VarMap Result
     ,  !
     .
 extract_type H Result Context SetList
@@ -998,7 +1037,7 @@ collapse_term (lib_app H A) Result _ []
     .
 
 collapse_term (fixMe _M T) Result _ []
-    :- erase_and_conv T extractor_singleton
+    :- conv T extractor_singleton
     ,  Result = extractor_star
     .
 
@@ -1025,19 +1064,6 @@ extract_term (lib_app H A) Result Context SetList
     ,  !
     .
 
-extract_term (# X Y) Result Context SetList
-    :- Context = (context Vars VarMap LibMap)
-    ,  extract_term Y Y' Context YList
-    ,  of Y TY @level, of Y' TY' @level
-    ,  ((name X, map_var X VarMap X', XList = [])
-        , !; pi y\ locDecl y TY => pi s\ locDecl s TY' =>
-            extract_term (X y) (X' s)
-            (context [var_term _ s|[var_term _ y|Vars]] [var_mapping y s|VarMap] LibMap)
-            XList)
-    ,  concat [YList, XList] SetList
-    ,  collapse_term (# X' Y') Result Context []
-    .
-
 extract_term (fixMe M T) Result Context SetList
     :- extract_type T T' Context SetList
     ,  collapse_term (fixMe M T') Result Context []
@@ -1045,10 +1071,24 @@ extract_term (fixMe M T) Result Context SetList
     .
 
 extract_term extractor_star extractor_star _ [] :- !.
+
+extract_term (# X Y) Result Context SetList
+    :- name X X []
+    ,  Context = (context _ VarMap _), map_var X VarMap X'
+    ,  extract_term Y Y' Context SetList
+    ,  collapse_term (# X' Y') Result Context []
+    .
+extract_term A Result Context SetList
+    :- name A X [Y]
+    ,  Context = (context _ VarMap _), map_var X VarMap X'
+    ,  extract_term Y Y' Context SetList
+    ,  collapse_term (X' Y') Result Context []
+    ,  !
+    .
+
 extract_term A Result Context []
-    :- name A
-    ,  Context = (context _ VarMap _)
-    ,  map_var A VarMap Result
+    :- name A A []
+    ,  Context = (context _ VarMap _), map_var A VarMap Result
     ,  !
     .
 extract_term H Result Context SetList
@@ -1101,24 +1141,22 @@ is_informative props false.
 is_informative propc false.
 
 reabstract_term (extractor_type_lambda K F) H M Context Result
-    :- spy((name F, reabstract_dep_term F H M Context F')
-        , !; pi Bi\ (isaType Bi K int) => reabstract_term (F Bi) H M Context (F' Bi))
+    :- spy(pi Bi\ (isaType Bi K int) => reabstract_term (F Bi) H M Context (F' Bi))
     ,  spy(Result = (extractor_type_lambda K F'))
     ,  !
     .
 reabstract_term (extractor_dep_type_lambda A K F) H M Context Result
     :- reabstract_type A H M Context A'
-    ,  spy((name F, reabstract_dep_term F H M Context F')
-        , !; pi a\ of a A int => pi Bi\ (isaType (Bi a) K int) => reabstract_term (F Bi) H M Context (F' Bi))
+    ,  spy(pi a\ of a A int => pi Bi\ (isaType (Bi a) K int) =>
+        reabstract_term (F Bi) H M Context (F' Bi))
     ,  spy(Result = (extractor_dep_type_lambda A' K F'))
     ,  !
     .
 reabstract_term (extractor_dep_lambda A B F) H M Context Result
     :- reabstract_type A H M Context A'
-    ,  spy((name B, reabstract_dep_type B H M Context B')
-        , !; pi a\ of a A int => reabstract_type (B a) H M Context (B' a))
-    ,  spy((name F, reabstract_dep_term F H M Context F')
-        , !; pi a\ of a A int => pi b\ (of (b a) (B a) int) => reabstract_term (F b) H M Context (F' b))
+    ,  spy(pi a\ of a A int => reabstract_type (B a) H M Context (B' a))
+    ,  spy(pi a\ of a A int => pi b\ (of (b a) (B a) int) =>
+        reabstract_term (F b) H M Context (F' b))
     ,  spy(Result = (extractor_dep_lambda A' B' F'))
     ,  !
     .
@@ -1126,15 +1164,13 @@ reabstract_term (extractor_dep_lambda A B F) H M Context Result
 
 reabstract_type (setPi B C) H M Context Result
     :- reabstract_type B H M Context B'
-    ,  ((name C, reabstract_dep_type C H M Context C')
-        , !; pi b\ locDecl b B => reabstract_type (C b) H M Context (C' b))
+    ,  (pi b\ locDecl b B => reabstract_type (C b) H M Context (C' b))
     ,  spy(Result = (setPi B' C'))
     ,  !
     .
 reabstract_term (lambda B F) H M Context Result
     :- spy(reabstract_type B H M Context B')
-    ,  spy((name F, reabstract_dep_term F H M Context F')
-        , !; pi b\ locDecl b B => reabstract_term (F b) H M Context (F' b))
+    ,  spy(pi b\ locDecl b B => reabstract_term (F b) H M Context (F' b))
     ,  spy(Result = (lambda B' F'))
     ,  !
     .
@@ -1147,8 +1183,7 @@ reabstract_term (app Lam X) H M Context Result
 
 reabstract_type (setSigma B C) H M Context Result
     :- reabstract_type B H M Context B'
-    ,  ((name C, reabstract_dep_type C H M Context C')
-        , !; pi b\ locDecl b B => reabstract_type (C b) H M Context (C' b))
+    ,  (pi b\ locDecl b B => reabstract_type (C b) H M Context (C' b))
     ,  spy(Result = (setSigma B' C'))
     ,  !
     .
@@ -1172,10 +1207,9 @@ reabstract_term (p2 Pair) H M Context Result
 reabstract_term (elim_setSigma Pair MT MM) H M Context Result
     :- reabstract_term Pair H M Context Pair'
     ,  isa Pair (setSigma B C) @level
-    ,  ((name MT, reabstract_dep_type MT H M Context MT')
-        , !; pi p\ locDecl p (setSigma B C) => reabstract_type (MT p) H M Context (MT' p))
-    ,  ((pi b\ locDecl b B => (name (MM b), reabstract_dep_term (MM b) H M Context (MM' b)))
-        , !; pi b\ pi c\ locDecl b B => locDecl c (C b) => reabstract_term (MM b c) H M Context (MM' b c))
+    ,  (pi p\ locDecl p (setSigma B C) => reabstract_type (MT p) H M Context (MT' p))
+    ,  (pi b\ pi c\ locDecl b B => locDecl c (C b) =>
+        reabstract_term (MM b c) H M Context (MM' b c))
     ,  Result = (elim_setSigma Pair' MT' MM')
     ,  !
     .
@@ -1203,12 +1237,9 @@ reabstract_term (inr A B BB) H M Context Result
 reabstract_term (elim_setSum C W Cl Cr) H M Context Result
     :- reabstract_term W H M Context W'
     ,  isa W (setSum L R) @level
-    ,  ((name C, reabstract_dep_type C H M Context C')
-        , !; pi w\ locDecl w (setSum L R) => reabstract_type (C w) H M Context (C' w))
-    ,  ((name Cl, reabstract_dep_term Cl H M Context Cl')
-        , !; pi l\ locDecl l L => reabstract_term (Cl l) H M Context (Cl' l))
-    ,  ((name Cr, reabstract_dep_term Cr H M Context Cr')
-        , !; pi r\ locDecl r R => reabstract_term (Cr r) H M Context (Cr' r)) 
+    ,  (pi w\ locDecl w (setSum L R) => reabstract_type (C w) H M Context (C' w))
+    ,  (pi l\ locDecl l L => reabstract_term (Cl l) H M Context (Cl' l))
+    ,  (pi r\ locDecl r R => reabstract_term (Cr r) H M Context (Cr' r)) 
     ,  Result = (elim_setSum C' W' Cl' Cr')
     ,  !
     .
@@ -1233,11 +1264,9 @@ reabstract_term (list_cons C Head Tail) H M Context Result
 reabstract_term (elim_list L List LA LL) H M Context Result
     :- reabstract_term List H M Context List'
     ,  isa List (list C) @level
-    ,  ((name L, reabstract_dep_type L H M Context L')
-        , !; pi z\ locDecl z (list C) => reabstract_type (L z) H M Context (L' z))
+    ,  (pi z\ locDecl z (list C) => reabstract_type (L z) H M Context (L' z))
     ,  spy(reabstract_term LA H M Context LA')
-    ,  ((pi y\ locDecl y C => pi x\ locDecl x (list C) => (name (LL y x), reabstract_dep_term (LL y x) H M Context (LL' y x)))
-        , !; pi y\ locDecl y C => pi x\ locDecl x (list C) => pi z\ locDecl z (L x) => 
+    ,  (pi y\ locDecl y C => pi x\ locDecl x (list C) => pi z\ locDecl z (L x) => 
             reabstract_term (LL y x z) H M Context (LL' y x z))
     ,  Result = (elim_list L' List' LA' LL')
     ,  !
@@ -1253,15 +1282,13 @@ reabstract_arg (var_term _ _) A H M Context Result
     :- reabstract_term A H M Context Result
     ,  !
     .
-reabstract_arg (var_dep_type _ _ _) A H M Context Result
-    :-  spy((name A, reabstract_dep_type A H M Context A')
-        , !; pi x\ locDecl x X_ => reabstract_type (A x) H M Context (A' x))
+reabstract_arg (var_dep_type _ _ X) A H M Context Result
+    :-  spy(reabstract_type (A X) H M Context (A' X))
     ,  Result = A'
     ,  !
     .
-reabstract_arg (var_dep_term _ _ _) A H M Context Result
-    :- spy((name A, reabstract_dep_term A H M Context A')
-        , !; pi x\ locDecl x X_ => reabstract_term (A x) H M Context (A' x))
+reabstract_arg (var_dep_term _ _ X) A H M Context Result
+    :- spy(reabstract_term (A X) H M Context (A' X))
     ,  Result = A'
     ,  !
     .
@@ -1300,34 +1327,41 @@ reabstract_term (# X Y) H M Context Result
     ,  reabstract_term Y H M Context Y'
     ,  Result = (# X' Y')
     .
+reabstract_type A H M Context Result
+    :- name A X [Y]
+    ,  reabstract_dep_type X H M Context X'
+    ,  reabstract_term Y H M Context Y'
+    ,  Result = (X' Y')
+    .
+reabstract_term A H M Context Result
+    :- name A X [Y]
+    ,  reabstract_dep_term X H M Context X'
+    ,  reabstract_term Y H M Context Y'
+    ,  Result = (X' Y')
+    .
+
 
 reabstract_type A (var_type H _) (var_type M _) _ M
-    :- name A
+    :- name A A []
     ,  spy(A = H)
     ,  !
     .
 reabstract_type A _ _ _ A.
-
-
+reabstract_dep_type A (var_dep_type H _ _) (var_dep_type M _ _) _ M
+    :- name A A []
+    ,  spy(A = H)
+    ,  !
+    .
+reabstract_dep_type A _ _ _ A.
 reabstract_term A (var_term _ H) (var_term _ M) _ M
-    :- name A
+    :- name A A []
     ,  spy(A = H)
     ,  !
     .
 reabstract_term A _ _ _ A.
-
-type reabstract_dep_term A -> mttTerm -> mttTerm -> context_type -> A -> prop.
-reabstract_dep_type A (var_dep_type H _ _) (var_dep_type M _ _) _ M
-    :- name A
-    ,  A = H
-    ,  !
-    .
-reabstract_dep_type A _ _ _ A.
-
-type reabstract_dep_term A -> mttTerm -> mttTerm -> context_type -> A -> prop.
 reabstract_dep_term A (var_dep_term _ H _) (var_dep_term _ M _) _ M
-    :- name A
-    ,  A = H
+    :- name A A []
+    ,  spy(A = H)
     ,  !
     .
 reabstract_dep_term A _ _ _ A.
@@ -1350,8 +1384,7 @@ perform_abstractions_ (var_term _ H) TL Context Term Result
 perform_abstractions_ (var_dep_term HType H A) TL Context Term Result
     :- spy(of A AType @level)
     ,  spy(isa (H A) (HType A) @level)
-    ,  spy((name HType, XType = HType)
-        , !; extract_type (HType A) (XType A) Context _)
+    ,  spy(extract_type (HType A) (XType A) Context _)
     ,  pi x\ (of (x A) (XType A) int) =>
         ( spy(perform_abstractions TL Context Term Term1)
         , spy(reabstract_term Term1 (var_dep_term HType H A) (var_dep_term XType x A) Context (Term2 x))
