@@ -85,3 +85,43 @@ L'ultima parte riguarda la modifica dei giudizi in `main.elpi`, in particolare
 
 Anche questa e' una modifica "invasiva" perche' va a modificare codice
 precedente.
+
+La sospensione del tipaggio si vede in
+
+```[prolog]
+of      (uvar as X) T Y IE :- declare_constraint (isa X T Y IE) [X, Y].
+ofType  (uvar as X) K   IE :- declare_constraint (ofType X K IE) [X].
+isa     (uvar as X) T Y IE :- declare_constraint (isa X T Y IE) [X, Y].
+isaType (uvar as X) K   IE :- declare_constraint (isaType X K IE) [X].
+```
+
+La definizione con dimostrazione e'
+
+```[prolog]
+% Caso di definizione senza termine -> lo devi dimostrare
+process_entry (locDefL N TY) Hyp :-
+    process_entry (locDefL N TY (script [])) Hyp.
+
+% Caso di prova con uno script (completo o meno) in input
+process_entry (locDefL N TY (script S)) Hyp :-
+    spy(verify_arg_order N),
+    spy(isaType TY _ int),
+    erase_var_app TY TY',
+    prove TE TY' RTE S _,
+    Hyp = locDef N TY RTE,
+    print "defined " N TY RTE,
+    print "## New definition: " N.
+```
+
+Questo significa che si puo' chiamare `process_entry` su una cosa come (vede in
+fondo a `test.elpi`)
+
+```[prolog]
+(univPi A\ locDefL
+    setId
+    (setPi A (_\ A))
+    (script [intro hyp, app hyp]))
+```
+
+E questo di fatto fara' partire il dimostratore che alla fine genera il termine
+che va della `locDef` e quindi nell'ipotesi finale.
