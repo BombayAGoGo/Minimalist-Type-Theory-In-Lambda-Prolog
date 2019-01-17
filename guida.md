@@ -74,6 +74,33 @@ precedenti.
 
 ### `itp_components`
 
+Questa parte e' quella che costituisce il dimostratore interattivo e si compone
+di `itp.elpi` e la cartella `itp_components`, divisa in `internals.elpi` e
+`io.elpi`.
+
+Il primo file contiene varie definizione di predicati per lanciare il
+dimostratore, il cui entry point e' `itp_loop`. Questi predicati sono
+`prove_term`, `prove_goals` e `prove`, di cui il principale e' `prove` e gli
+altri sono semplicemente altri modi di far partire (con goal multipli, con
+termini).
+
+L'idea di `prove` e' semplicemente di lanciare il tipaggio con
+`of X Type ProofTerm` e poi chiamare il loop creando a mano il goal iniziale.
+Volendo si potrebbero creare macro che astraggono la creazione di goal iniziali
+per evitare di sbagliarsi.
+
+#### Internals
+
+In questo file sono contenute le definizioni vere e proprie per il dimostratore
+interattivo i.e. la definizione del loop, la gestione dei tinycals etc.
+
+#### IO
+
+Questa componente e' quella probabilmente meno utile perche' semplicemente si
+occupa dello stampare a schermo le informazioni contenute negli stati i.e.
+rappresentazione dei goal, dei contesti etc. Si appoggia sull'esistenza del
+pretty printing per i termini della logica che si vuole rappresentare.
+
 ### `refinement`
 
 ### `main.elpi`
