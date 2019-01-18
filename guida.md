@@ -94,6 +94,60 @@ per evitare di sbagliarsi.
 In questo file sono contenute le definizioni vere e proprie per il dimostratore
 interattivo i.e. la definizione del loop, la gestione dei tinycals etc.
 
+L'entry point e' `itp_loop` che e' un predicato con 5 "argomenti":
+
+1. il termine di input, cioe' il primo termine su cui si e' lanciato prove
+2. lo stato corrente
+3. lo script di input
+4. i goal eventualmente rimanenti al termine della dimostrazione es. goal che
+   non si e' riuscito a chiudere oppure interruzione della dimostrazione prima
+   della completa fine
+5. lo script di output
+
+Il termine in input iniziale serve per i controlli di raggiungibilita' delle
+metavariabili prima di chiudere il loop: alcuni goal possono rimanere aperti ma
+possono corrispondere a metavariabili irraggiungibili es. `((x\ zero) Y)`
+genererebbe un goal per `Y` che pero', qualora venisse eseguita la
+$\beta$-riduzione, andrebbe persa. Pertanto, prima di chiudere il loop, viene
+eseguito un controllo di raggiungibilita' che, a partire dal termine in input,
+identifica quelle che sono le meta effettivamente raggiungibili dal termine e
+rimuove le altre.
+
+Il secondo argomento e' lo stato della dimostrazione e non viene mai toccato
+direttamente dal loop ma semplicemente dai tinycals. Questo ha la forma:
+
+```[prolog]
+state [ActiveGoals] [[InactiveGoals]] [levels] MaxGoalNumber
+```
+
+`[ActiveGoals]` e' una lista che contiene i goal correntemente attivi ed e'
+formata da coppie `(Id, Goal)` dove `Id` e' un intero che indica il numero del
+goal (i goal sono numerati progressivamente in ordine di come sono creati).
+`Goal` e' a sua volta un termine della forma
+
+```[prolog] 
+goal Term TypeOfTerm RefTerm VDecls
+```
+
+Dove:
+
+* `Term` e' una metavariabile
+* `TypeOfTerm` e' una rappresentazione del tipo di `Term`
+* `RefTerm` e' una metavariabile a cui `Term` si raffina
+* `VDecls` e' una lista di dichiarazioni di variabile della forma
+  `vdecl Var TypeOfVar`, dove `Var` e' un atomo che corrisponde un nome di
+  variabile e `TypeOfVar` e' il suo tipo
+
+`Term`, `TypeOfTerm` e `RefTerm` compaiono in un constraint della forma
+
+```[prolog]
+isa Term TypeOfTerm RefTerm -> suspended on [Term]
+```
+
+Quindi, di fatto, un goal non e' altro che la rappresentazione dei constraint di
+tipaggio posti automaticamente dalla chiamata del predicato `of` su un termine
+contenente metavariabili.
+
 #### IO
 
 Questa componente e' quella probabilmente meno utile perche' semplicemente si
