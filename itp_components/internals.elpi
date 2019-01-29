@@ -61,7 +61,7 @@ reachable_goal Term (goal X _ _ _) :-
 % ---- INTERNALS ---- %
 % ------------------- %
 
-% ITP carries around a state which is representeted by a tuple of tre elements:
+% ITP carries around a state which is representeted by a tuple of four elements:
 %   1. list of active goals,
 %   2. list of inactive goals (which is a list of lists, because of nesting)
 %   3. list of nesting levels L ::= [b|L] | [f|L] | []
@@ -87,6 +87,7 @@ process_tac T (state [(0, skip_goal)] _ _ _) _ :-
     print "you have to skip", fail.
 
 /*
+Invariants:
 - branch is always called on a state that has at least one goal, otherwise fail
 - branch lables branch context goals but they are only needed for projection, so
   we can keep numbering goals from max goal number
@@ -97,20 +98,25 @@ process_tac branch
     label_branch_ctx Goals BranchCtx.
 
 /*
+Invariants:
 - shift assumes that there is always a goal to shift to (i.e. at least two goals
   on top of the branch context, otherwise fail
 */
 
+% when arriving on a closed goal -> put a skip_goal
+% when moving from a non elaborated goal put the current active goal at the end
+% of BOTop/BOT list i.e. Branch Out Top, used to preserve goal ordering
+
 % shift ON a closed goal FROM an NON elaborated branch
 process_tac shift
-    (state [Hd] [bstate [(_, Hd), (_, (_, closed_goal)) as ClosedGoal|Gs] BO BOTop|I] ([b|_] as L) M)
-    (state [(0, skip_goal)] [bstate [ClosedGoal|Gs] BO NewBOTop|I] ([b|_] as L) M) :-
+    (state [Hd] [bstate [(_, Hd), (_, (_, closed_goal)) as ClosedGoal|_Gs] _BO BOTop|_I] ([b|_] as L) _M)
+    (state [(0, skip_goal)] [bstate [ClosedGoal|_Gs] _BO NewBOTop|_I] ([b|_] as L) _M) :-
     append BOTop Hd NewBOTop.
 
 % shift ON a closed goal FROM an elaborated branch
 process_tac shift
-    (state Active [bstate [_, (_, (_, closed_goal)) as ClosedGoal|Gs] BranchOut BOT|I] ([b|_] as L) M)
-    (state [(0, skip_goal)] [bstate [ClosedGoal|Gs] NewOut BOT|I] ([b|_] as L) M) :-
+    (state Active [bstate [_, (_, (_, closed_goal)) as ClosedGoal|_Gs] BranchOut _BOT|_I] ([b|_] as L) _M)
+    (state [(0, skip_goal)] [bstate [ClosedGoal|_Gs] NewOut _BOT|_I] ([b|_] as L) _M) :-
     append BranchOut Active NewOut.
 
 % shift ON a NON closed goal FROM a NON elaborated goal
@@ -258,22 +264,6 @@ process_tac (first [Tac|Tacs]) State State' :-
 
 % ---- DEFAULT ---- %
 
-/*
-% Alternativa a quello scritto sotto i.e. si entra nelle htac.
-% Cosa cambia? Htac non puo' contenere tinycal, diventa una tattica che opera
-% sui goal in un qualche modo senza il supporto dei tinycal
-process_tac Tac (state Goals I L Mgn) (state Newgoals I L NMgn) :-
-    htac Tac Goals UnlabeledGoals,
-    label_goals Mgn UnlabeledGoals NMgn NewGoals.
-
-% Default di htac e' bind
-htac Tac [Goal|Goals] NewGoals :-
-    exec_tac Tac Goal NewGoals',
-    append NewGoals' NewGoals'' NewGoals,
-    htac Tac Goals NewGoals''.
-    
-*/
-
 % Invariant: here Tac is either an htac or an ltac, but it can't contain
 %            tinycals or tacticals
 process_tac Tac (state [] _ _ _) _ :- !, fail.
@@ -325,7 +315,7 @@ exec_tac_aux Tac (goal X T Y D as G) [] FVars NG :-
     tactic Tac G FVars Term, X = Term, build_newgoals Y D NG.
 exec_tac_aux Tac (goal X T Y D) [vdecl N TN|VDecls] FVars NG :-
     pi x\ copy_var x N => (
-        copy_to_type TN TN',
+        copy_type to TN TN',
         %of x TN' x =>
         locDecl x TN' =>
             exec_tac_aux Tac (goal (X x) T (Y x) D) VDecls [(x, N)|FVars] NG
@@ -359,7 +349,7 @@ intro_and_build_aux Y V [] FVars NG :-
     build_newgoals Y V NG.
 intro_and_build_aux Y V [vdecl N TN|VDecls] FVars NG :-
     pi x\ copy_var x N => (
-        copy_to_type TN TN',
+        copy_type to TN TN',
         %of x TN' x =>
         locDecl x TN' =>
             intro_and_build_aux (Y x) V VDecls [(x, N)|FVars] NG
@@ -473,9 +463,9 @@ mode (lookdown i i i i).
 lookdown (uvar K L as X) VDecls Y T :-
     declare_constraint (read-refined X VDecls Y T) [X].
 
-% Invariant 1: L1 = L1' and L2 is the same length as them i.e. same metavars are
+% Condition 1: L1 = L1' and L2 is the same length as them i.e. same metavars are
 %            applied to the same number of fresh variables in different contexts
-% Invariant 2: VDecls correspond the the last n fresh variables in L1/L1'/L2
+% Condition 2: VDecls correspond the the last n fresh variables in L1/L1'/L2
 constraint isa read-evar read-refined of {
      rule (E1 : Ctx ?- isa (uvar K L1) Ty (uvar O L1' as Y) _)
         \ (E2 : Ctx2 ?- read-refined (uvar O L2) VDecls X T)
@@ -484,7 +474,7 @@ constraint isa read-evar read-refined of {
           L1 = L1',
           reverse L1' RL1', reverse L2 RL2, reverse VDecls RVDecls,
           create_copy_hyps RVDecls RL2 RL1' Hyps Rem,
-          Hyps => copy_from_type Ty S, !;
+          Hyps => copy_type from Ty S, !;
           print "align fail on" L1 "=" L1', halt)
         <=> (E2: (X = uvar K Rem, T = S)).
 }

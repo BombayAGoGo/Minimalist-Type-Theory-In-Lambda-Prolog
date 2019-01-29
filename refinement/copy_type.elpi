@@ -1,0 +1,313 @@
+% Code needed to extend copy so that we can go from `of` thread to `itp` thread
+% and vv i.e. to properly copy a type which could contain bindings or fresh
+% variabiles and so on.
+
+% During itp we add `copy_var ci atom` clauses that are used here. If we are
+% copying from a type then we'll copy X to Y where X is an eigenvariable, if we
+% are copying to a type then we'll copy X to Y where Y is and eigenvariable
+
+mode (copy_type i i o).
+%copy_type A B C :- print (copy_type A B C), fail.
+
+copy_type FT [] []. 
+copy_type FT [X|Xs] [Y|Ys] :- copy_type FT X Y, copy_type FT Xs Ys.
+
+copy_type FT (uvar K L) X :- !, copy_type FT L L', X = (uvar K L').
+
+% ---- AND ---- %
+copy_type FT (and A B) (and T S) :- copy_type FT A T, copy_type FT B S.
+copy_type FT (pair_and A B P Q) (pair_and T S M N) :-
+    copy_type FT A T, copy_type FT B S,
+    copy_type FT P M, copy_type FT Q N.
+copy_type FT (p1_and P) (p1_and Q) :- copy_type FT P Q.
+copy_type FT (p2_and P) (p2_and Q) :- copy_type FT P Q.
+
+% ---- EXIST ---- %
+copy_type FT (exist A (uvar as B)) (exist T S) :- !,
+    copy_type FT A T, copy_type FT B S.
+copy_type FT (exist A B) (exist T S) :-
+    copy_type FT A T, pi x\ copy_type FT (B x) (S x).
+copy_type FT (pair_exist A B P Q) (pair_exist T S M N) :-
+    copy_type FT A T, copy_type FT B S,
+    copy_type FT P M, copy_type FT Q N.
+
+% Named case
+copy_type FT (elim_exist N1 N2 P T F) (elim_exist N1 N2 Q S G) :-
+    copy_type FT (elim_exist P T F) (elim_exist Q S G).
+% Prevent adding fvars to uvars
+copy_type FT (elim_exist P T (uvar as F)) (elim_exist Q S G) :- !,
+    copy_type FT P Q, copy_type FT T S, copy_type FT F G.
+% Base case
+copy_type FT (elim_exist P T F) (elim_exist Q S G) :-
+    copy_type FT P Q, copy_type FT T S,
+    pi x y\ copy_type FT (F x y) (G x y).
+
+% ---- FORALL ---- %
+copy_type FT (forall A (uvar as B)) (forall T S) :- !,
+    copy_type FT A T, copy_type FT B S.
+copy_type FT (forall A B) (forall T S) :-
+    copy_type FT A T, pi x\ copy_type FT (B x) (S x).
+
+% Named case
+copy_type FT (forall_lam N A F) (forall_lam N B G) :-
+    copy_type FT (forall_lam A F) (forall_lam B G).
+% Prevent adding fvars to uvars
+copy_type FT (forall_lam A (uvar as F)) (forall_lam B G) :- !,
+    copy A B, copy F G.
+% Base case
+copy_type FT (forall_lam A F) (forall_lam B G) :-
+    copy_type FT A B, pi x\ copy_type FT (F x) (G x).
+
+copy_type FT (forall_app L X) (forall_app J Y) :-
+    copy_type FT L J, copy_type FT X Y.
+
+% ---- IMPLIES ---- %
+copy_type FT (implies A B) (implies T S) :-
+    copy_type FT A T, copy_type FT B S.
+
+% Named case
+copy_type FT (impl_lam N A F) (impl_lam N B G) :-
+    copy_type FT (impl_lam A F) (impl_lam B G).
+% Prevent adding fvars to uvars
+copy_type FT (impl_lam A (uvar as F)) (impl_lam B G) :- !,
+    copy A B, copy F G.
+% Base case
+copy_type FT (impl_lam A F) (impl_lam B G) :-
+    copy_type FT A B, pi x\ copy_type FT (F x) (G x).
+
+copy_type FT (impl_app L X) (impl_app J Y) :-
+    copy_type FT L J, copy_type FT X Y.
+
+% ---- LIST ---- %
+copy_type FT (list C) (list D) :- copy_type FT C D.
+copy_type FT (list_empty C) (list_empty D) :- copy_type FT C D.
+copy_type FT (list_cons C H T) (list_cons D I U) :-
+    copy_type FT C D, copy_type FT H I, copy_type FT T U.
+
+% Named case
+copy_type FT (elim_list N1 N2 N3 T L LA LL) (elim_list N1 N2 N3 T' L' LA' LL') :-
+    copy_type FT (elim_list T L LA LL) (elim_list T' L' LA' LL').
+% Prevent adding fvars to uvars
+copy_type FT (elim_list (uvar as T) L LA (uvar as LL)) (elim_list T' L' LA' LL') :- !,
+    copy_type FT T T', copy_type FT L L',
+    copy_type FT LA LA', copy_type FT LL LL'.
+copy_type FT (elim_list T L LA (uvar as LL)) (elim_list T' L' LA' LL') :- !,
+    (pi x\ copy_type FT (T x) (T' x)),
+    copy_type FT L L', copy_type FT LA LA', copy_type FT LL LL'.
+copy_type FT (elim_list (uvar as T) L LA LL) (elim_list T' L' LA' LL') :- !,
+    copy_type FT T T', copy_type FT L L', copy_type FT LA LA',
+    pi x y z\ copy_type FT (LL x y z) (LL' x y z).
+% Base case
+copy_type FT (elim_list T L LA LL) (elim_list T' L' LA' LL') :-
+    (pi x\ copy_type FT (T x) (T' x)),
+    copy_type FT L L',
+    copy_type FT LA LA',
+    pi x y z\ copy_type FT (LL x y z) (LL' x y z).
+
+% ---- OR ---- %
+copy_type FT (or A B) (or T S) :- copy_type FT A T, copy_type FT B S.
+
+copy_type FT (inl_or A B L) (inl_or T S L') :-
+    copy_type FT A T, copy_type FT B S, copy_type FT L L'.
+copy_type FT (inr_or A B R) (inr_or T S R') :-
+    copy_type FT A T, copy_type FT B S, copy_type FT R R'.
+
+% Named case
+copy_type FT (elim_or N1 N2 C W Cl Cr) (elim_or N1 N2 D W' Cl' Cr') :-
+    copy_type FT (elim_or C W Cl Cr) (elim_or D W' Cl' Cr').
+% Prevent adding fvars to uvars
+copy_type FT (elim_or C W (uvar as Cl) (uvar as Cr)) (elim_or D W' Cl' Cr') :- !, 
+    copy_type FT C D, copy_type FT W W',
+    copy_type FT Cl Cl', copy_type FT Cr Cr'.
+copy_type FT (elim_or C W (uvar as Cl) Cr) (elim_or D W' Cl' Cr') :- !,
+    copy_type FT C D, copy_type FT W W', copy_type FT Cl Cl',
+    (pi y\ copy_type FT (Cr y) (Cr' y)).
+copy_type FT (elim_or C W Cl (uvar as Cr)) (elim_or D W' Cl' Cr') :- !,
+    copy_type FT C D, copy_type FT W W', copy_type FT Cr Cr',
+    (pi x\ copy_type FT (Cl x) (Cl' x)).
+% Base case
+copy_type FT (elim_or C W Cl Cr) (elim_or D W' Cl' Cr') :-
+    copy_type FT C D, copy_type FT W W',
+    (pi x\ copy_type FT (Cl x) (Cl' x)),
+    (pi y\ copy_type FT (Cr y) (Cr' y)).
+
+% ---- PROPEQ ---- %
+copy_type FT (propEq A M N) (propEq B P Q) :-
+    copy_type FT A B, copy_type FT M P, copy_type FT N Q.
+copy_type FT (eq A X) (eq B Y) :- copy_type FT A B, copy_type FT X Y.
+
+% ---- PROPID ---- %
+copy_type FT (propId A X Y) (propId B M N) :-
+    copy_type FT A B, copy_type FT X M, copy_type FT Y N.
+copy_type FT (id A X) (id B Y) :- copy_type FT A B, copy_type FT X Y.
+
+copy_type FT (elim_id P (uvar as C) (uvar as F)) (elim_id Q D G) :- !,
+    copy_type FT P Q, copy_type FT C D, copy_type FT F G.
+copy_type FT (elim_id P (uvar as C) F) (elim_id Q D G) :- !,
+    copy_type FT P Q, copy_type FT C D, pi x\ copy_type FT (F x) (G x).
+copy_type FT (elim_id P C (uvar as F)) (elim_id Q D G) :- !,
+    copy_type FT P Q,
+    (pi x y\ copy_type FT (C x y) (D x y)),
+    copy_type FT F G.
+copy_type FT (elim_id P C (uvar as F)) (elim_id Q D G) :- !,
+    copy_type FT P Q,
+    (pi x y\ copy_type FT (C x y) (D x y)),
+    pi x\ copy_type FT (F x) (G x).
+
+% ---- SETPI ---- %
+copy_type FT (setPi A (uvar as B)) (setPi T S) :- !,
+    copy_type FT A T, copy_type FT B S.
+copy_type FT (setPi A B) (setPi T S) :-
+    copy_type FT A T, pi x\ copy_type FT (B x) (S x).
+
+% Named case
+copy_type FT (lambda N A F) (lambda N B G) :-
+    copy_type FT (lambda A F) (lambda B G).
+% Prevent
+copy_type FT (lambda A (uvar as F)) (lambda B G) :- !,
+    copy_type FT A B, copy_type FT F G.
+% Base case
+copy_type FT (lambda A F) (lambda B G) :-
+    copy_type FT A B, pi x\ copy_type FT (F x) (G x).
+
+copy_type FT (app L X) (app J Y) :-
+    copy_type FT L J, copy_type FT X Y.
+
+% ---- SETSIGMA ---- %
+copy_type FT (setSigma A (uvar as B)) (setSigma T S) :- !,
+    copy_type FT A T, copy_type FT B S.
+copy_type FT (setSigma A B) (setSigma T S) :-
+    copy_type FT A T, pi x\ copy_type FT (B x) (S x).
+copy_type FT (p1 P) (p1 Q) :- copy_type FT P Q.
+copy_type FT (p2 P) (p2 Q) :- copy_type FT P Q.
+copy_type FT (pair A (uvar as B) P Q) (pair T S M N) :- !,
+    copy_type FT A T, copy_type FT B S,
+    copy_type FT P M, copy_type FT Q N.
+copy_type FT (pair A B P Q) (pair T S M N) :-
+    copy_type FT A T, (pi x\ copy_type FT (B x) (S x)),
+    copy_type FT P M, copy_type FT Q N.
+
+% Named case
+copy_type FT (elim_setSigma N1 N2 P T F) (elim_setSigma N1 N2 Q S G) :-
+    copy_type FT (elim_setSigma P T F) (elim_setSigma Q S G).
+% Prevent
+copy_type FT (elim_setSigma P (uvar as T) (uvar as F)) (elim_setSigma Q S G) :- !,
+    copy_type FT P Q, copy_type FT T S, copy_type FT F G.
+copy_type FT (elim_setSigma P T (uvar as F)) (elim_setSigma Q S G) :- !,
+    copy_type FT P Q,
+    (pi x\ copy_type FT (T x) (S x)),
+    copy_type FT F G.
+copy_type FT (elim_setSigma P (uvar as T) F) (elim_setSigma Q S G) :- !,
+    copy_type FT P Q, copy_type FT T S,
+    pi x y\ copy_type FT (F x y) (G x y).
+% Base case
+copy_type FT (elim_setSigma P T F) (elim_setSigma Q S G) :-
+    copy_type FT P Q,
+    (pi x\ copy_type FT (T x) (S x)),
+    pi x y\ copy_type FT (F x y) (G x y).
+
+% ---- SETSUM ---- %
+copy_type FT (setSum A B) (setSum T S) :-
+    copy_type FT A T, copy_type FT B S.
+copy_type FT (inr A B R) (inr T S R') :-
+    copy_type FT A T, copy_type FT B S, copy_type FT R R'.    
+copy_type FT (inl A B L) (inl T S L') :-
+    copy_type FT A T, copy_type FT B S, copy_type FT L L'.    
+
+% Named case
+copy_type FT (elim_setSum N1 N2 C W Cl Cr) (elim_setSum N1 N2 D W' Cl' Cr') :-
+    copy_type FT (elim_setSum C W Cl Cr) (elim_setSum D W' Cl' Cr').
+    
+% Prevent
+copy_type FT (elim_setSum (uvar as C) W (uvar as Cl) (uvar as Cr)) (elim_setSum D W' Cl' Cr') :- !,
+    copy C D, copy W W', copy Cl Cl', copy Cr Cr'.
+copy_type FT (elim_setSum C W (uvar as Cl) (uvar as Cr)) (elim_setSum D W' Cl' Cr') :- !,
+    (pi x\ copy_type FT (C x) (D x)),
+    copy W W', copy Cl Cl', copy Cr Cr'.
+copy_type FT (elim_setSum (uvar as C) W (uvar as Cl) Cr) (elim_setSum D W' Cl' Cr') :- !,
+    copy C D, copy W W', copy Cl Cl',
+    (pi y\ copy_type FT (Cr y) (Cr' y)).
+copy_type FT (elim_setSum (uvar as C) W Cl (uvar as Cr)) (elim_setSum D W' Cl' Cr') :- !,
+    copy C D, copy W W',
+    (pi x\ copy_type FT (Cl x) (Cl' x)),
+    copy Cr Cr'.
+copy_type FT (elim_setSum (uvar as C) W Cl Cr) (elim_setSum D W' Cl' Cr') :- !,
+    copy C D, copy W W',
+    (pi x\ copy_type FT (Cl x) (Cl' x)),
+    (pi y\ copy_type FT (Cr y) (Cr' y)).
+copy_type FT (elim_setSum C W (uvar as Cl) Cr) (elim_setSum D W' Cl' Cr') :- !,
+    (pi x\ copy_type FT (C x) (D x)),
+    copy W W',
+    copy Cl Cl',
+    (pi y\ copy_type FT (Cr y) (Cr' y)).
+copy_type FT (elim_setSum C W Cl (uvar as Cr)) (elim_setSum D W' Cl' Cr') :- !,
+    (pi x\ copy_type FT (C x) (D x)),
+    copy W W',
+    (pi x\ copy_type FT (Cl x) (Cl' x)),
+    copy Cr Cr'.
+% Base case
+copy_type FT (elim_setSum C W Cl Cr) (elim_setSum D W' Cl' Cr') :-
+    (pi x\ copy_type FT (C x) (D x)),
+    copy_type FT W W',
+    (pi x\ copy_type FT (Cl x) (Cl' x)),
+    (pi y\ copy_type FT (Cr y) (Cr' y)).
+
+% ---- SINGLETON ---- %
+copy_type FT singleton singleton.
+copy_type FT star star.
+
+copy_type FT (elim_singleton T (uvar as C) X) (elim_singleton S D Y) :- !,
+    copy_type FT T S, copy_type FT C D, copy_type FT X Y.
+copy_type FT (elim_singleton T C X) (elim_singleton S D Y) :-
+    copy_type FT T S, (pi x\ copy_type FT (C x) (D x)), copy_type FT X Y.
+
+% ---- FROM case
+
+% Invariant:
+% here X is a term containing ONLY fresh variabiles to convert to atoms
+
+% No applied name, either copy_var or just play copy
+copy_type from X Y :- name X HD [], !, (copy_var X Y, !; Y = X).
+
+% Applied name
+copy_type from X Y :-
+    name X HD TL,
+    copy_type from HD HD',
+    copy_type from TL TL', 
+    rebuild_app TL' HD' Y.
+
+% This shouldn't happen
+copy_type from X Y :-
+    constant X, print "constant case" X, halt.
+
+% ---- TO case
+
+% XXX: Here X is a term possibily containing atoms, not only fresh vars
+
+% Invariant: for each constant there should be a `copy_var ci constant`
+% Not applied constant
+
+copy_type to X Y :-
+    (name X H T, print X H T);
+    constant X _ [], !,
+    (copy_var Y X, !; print "error: constant without copy", halt).
+
+% Applied constant
+% Fresh var with args
+copy_type to X Y :-
+    constant X HD TL, !,
+    copy_type to HD HD',
+    copy_type to TL TL', 
+    rebuild_app TL' HD' Y.
+
+% Not applied name, either copy_var or just plain copy
+% Dual of copy_from_type, fresh var case
+copy_type to X Y :- name X _ [], !, (copy_var Y X, !; X = Y).
+
+% Applied name
+% Fresh var with args
+copy_type to X Y :-
+    name X HD TL, !,
+    copy_type to HD HD',
+    copy_type to TL TL', 
+    rebuild_app TL' HD' Y.

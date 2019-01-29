@@ -42,7 +42,7 @@ build_newgoals (pair_exist _ _ P Q) VDecls NewGoals :-
 build_newgoals (elim_exist P T F) VDecls NewGoals :-
     build_newgoals P VDecls NewGoals',
     of P (exist A B) _ _,
-    copy_from_type A A', copy_from_type B B',
+    copy_type from A A', copy_type from B B',
     get_fresh_name existv1 VDecls N1, get_fresh_name existv2 VDecls N2,
     append VDecls [vdecl N1 A', vdecl N2 B'] VDecls',
     (pi x y\ build_newgoals (F x y) VDecls' NewGoals''),
@@ -52,7 +52,7 @@ build_newgoals (elim_exist N1 N2 P T F) VDecls NewGoals :-
     not_a_dup N1 VDecls, not_a_dup N2 VDecls,
     build_newgoals P VDecls NewGoals',
     of P (exist A B) _ _,
-    copy_from_type A A', copy_from_type B B',
+    copy_type from A A', copy_type from B B',
     append VDecls [vdecl N1 A', vdecl N2 B'] VDecls',
     (pi x y\ build_newgoals (F x y) VDecls' NewGoals''),
     append NewGoals' NewGoals'' NewGoals.
@@ -60,14 +60,14 @@ build_newgoals (elim_exist N1 N2 P T F) VDecls NewGoals :-
 % ---- FORALL ---- %
 
 build_newgoals (forall_lam A F) VDecls NewGoals :-
-    copy_from_type A A',
+    copy_type from A A',
     create_name forallv VDecls N,
     append VDecls [vdecl N A'] VDecls',
     pi x\ build_newgoals (F x) VDecls' NewGoals.
 
 build_newgoals (forall_lam N A F) VDecls NewGoals :-
     not_a_dup N VDecls,
-    copy_from_type A A',
+    copy_type from A A',
     append VDecls [vdecl N A'] VDecls',
     pi x\ build_newgoals (F x) VDecls' NewGoals.
 
@@ -79,14 +79,14 @@ build_newgoals (forall_app M N) VDecls NewGoals :-
 % ---- IMPLIES ---- %
 
 build_newgoals (impl_lam A F) VDecls NewGoals :-
-    copy_from_type A A',
+    copy_type from A A',
     create_name implv VDecls N,
     append VDecls [vdecl N A'] VDecls',
     pi x\ build_newgoals (F x) VDecls' NewGoals.
 
 build_newgoals (impl_lam N A F) VDecls NewGoals :-
     not_a_dup N VDecls,
-    copy_from_type A A',
+    copy_type from A A',
     append VDecls [vdecl N A'] VDecls',
     pi x\ build_newgoals (F x) VDecls' NewGoals.
 
@@ -110,9 +110,9 @@ build_newgoals (elim_list L List LA LL) VDecls NewGoals :-
     build_newgoals List VDecls NGL,
     build_newgoals LA VDecls NGLA,
     of List (list C) _ _,
-    copy_from_type C C',
+    copy_type from C C',
     (pi x\ (locDecl x C, copy x N1) => conv (L x) L_x),
-    copy_from_type L_x L_N1,
+    copy_type from L_x L_N1,
     append VDecls [vdecl N1 C', vdecl N2 (list C'), vdecl N3 L_N1] VDecls',
     (pi x y z\ build_newgoals (LL x y z) VDecls' NGLL),
     append NGL NGLA Tmp, append Tmp NGLL NewGoals.
@@ -122,9 +122,9 @@ build_newgoals (elim_list N1 N2 N3 L List LA LL) VDecls NewGoals :-
     build_newgoals List VDecls NGL,
     build_newgoals LA VDecls NGLA,
     of List (list C) _ _,
-    copy_from_type C C',
+    copy_type from C C',
     (pi x\ (locDecl x C, copy x N1) => conv (L x) L_x),
-    copy_from_type L_x L_N1,
+    copy_type from L_x L_N1,
     append VDecls [vdecl N1 C', vdecl N2 (list C'), vdecl N3 L_N1] VDecls',
     (pi x y z\ build_newgoals (LL x y z) VDecls' NGLL),
     append NGL NGLA Tmp, append Tmp NGLL NewGoals.
@@ -140,7 +140,7 @@ build_newgoals (inr_or A B R) VDecls NewGoals :-
 build_newgoals (elim_or T W Cl Cr) :-
     build_newgoals W VDecls NGW,
     of W (or A B) _ _,
-    copy_from_type A A', copy_from_type B B',
+    copy_type from A A', copy_type from B B',
     get_fresh_name orvl VDecls N1, get_fresh_name orvr VDecls N2,
     append VDecls [vdecl N1 A'] VDL, append VDecls [vdecl N2 B'] VDR,
     (pi x\ build_newgoals (Cl x) VDL NGL),
@@ -151,7 +151,7 @@ build_newgoals (elim_or N1 N2 T W Cl Cr) :-
     not_a_dup N1 VDecls, not_a_dup N2 VDecls,
     build_newgoals W VDecls NGW,
     of W (or A B) _ _,
-    copy_from_type A A', copy_from_type B B',
+    copy_type from A A', copy_type from B B',
     append VDecls [vdecl N1 A'] VDL, append VDecls [vdecl N2 B'] VDR,
     (pi x\ build_newgoals (Cl x) VDL NGL),
     (pi y\ build_newgoals (Cr y) VDR NGR),
@@ -168,7 +168,7 @@ build_newgoals (id A X) VDecls NewGoals :- build_newgoals X VDecls NewGoals.
 build_newgoals (elim_id P _ F) VDecls NewGoals :-
     build_newgoals P VDecls NG',
     of P (propId A _ _) _ _,
-    copy_from_type A A',
+    copy_type from A A',
     get_fresh_name idv VDecls N,
     append VDecls [vdecl N A'] VDecls',
     (pi x\ build_newgoals (F x) VDecls' NG''),
@@ -178,7 +178,7 @@ build_newgoals (elim_id N P _ F) VDecls NewGoals :-
     not_a_dup N VDecls,
     build_newgoals P VDecls NG',
     of P (propId A _ _) _ _,
-    copy_from_type A A',
+    copy_type from A A',
     append VDecls [vdecl N A'] VDecls',
     (pi x\ build_newgoals (F x) VDecls' NG''),
     append NG' NG'' NewGoals.
@@ -186,13 +186,13 @@ build_newgoals (elim_id N P _ F) VDecls NewGoals :-
 % ---- SETPI ---- %
 
 build_newgoals (lambda T F) VDecls NewGoals :-
-    copy_from_type T T',
+    copy_type from T T',
     get_fresh_name lambdav N VDecls,
     append VDecls [vdecl N T'] L,
     pi x\ build_newgoals (F x) L NewGoals.
 build_newgoals (lambda N T F) VDecls NewGoals :-
     not_a_dup N VDecls,
-    copy_from_type T T',
+    copy_type from T T',
     append VDecls [vdecl N T'] L,
     pi x\ build_newgoals (F x) L NewGoals.
 build_newgoals (app M N) VDecls NewGoals :-
@@ -213,7 +213,7 @@ build_newgoals (p2 P) VDecls NewGoals :- build_newgoals P VDecls NewGoals.
 build_newgoals (elim_setSigma P T F) VDecls NewGoals :-
     build_newgoals P VDecls NP
     of P (sum A B) _ _,
-    copy_from_type A A', copy_from_type B B',
+    copy_type from A A', copy_type from B B',
     get_fresh_name sigv1 N1 VDecls, get_fresh_name sigv2 N2 VDecls,
     append VDecls [vdecl N1 A', vdecl N2 B'] L,
     pi x y\ build_newgoals (F x y) L NF,
@@ -223,7 +223,7 @@ build_newgoals (elim_setSigma N1 N2 P T F) VDecls NewGoals :-
     not_a_dup N1 VDecls, not_a_dup N2 VDecls,
     build_newgoals P VDecls NP
     of P (sum A B) _ _,
-    copy_from_type A A', copy_from_type B B',
+    copy_type from A A', copy_type from B B',
     append VDecls [vdecl N1 A', vdecl N2 B'] L,
     pi x y\ build_newgoals (F x y) L NF,
     append NP NF NewGoals.
@@ -236,7 +236,7 @@ build_newgoals (inr _ _ R) VDecls NewGoals :- build_newgoals R VDecls NewGoals.
 build_newgoals (elim_setSum T W Cl Cr) VDecls NewGoals :-
     build_newgoals W VDecls NGW,
     of W (setSum A B) _ _,
-    copy_from_type A A', copy_from_type B B',
+    copy_type from A A', copy_type from B B',
     get_fresh_name sumvl VDecls N1, get_fresh_name sumvr VDecls N2,
     append VDecls [vdecl N1 A'] VDL, append VDecls [vdecl N2 B'] VDR,
     (pi x\ build_newgoals (Cl x) VDL NGL),
@@ -247,7 +247,7 @@ build_newgoals (elim_setSum N1 N2 T W Cl Cr) VDecls NewGoals :-
     not_a_dup N1 VDecls, not_a_dup N2 VDecls,
     build_newgoals W VDecls NGW,
     of W (setSum A B) _ _,
-    copy_from_type A A', copy_from_type B B',
+    copy_type from A A', copy_type from B B',
     append VDecls [vdecl N1 A'] VDL, append VDecls [vdecl N2 B'] VDR,
     (pi x\ build_newgoals (Cl x) VDL NGL),
     (pi y\ build_newgoals (Cr y) VDR NGR),
