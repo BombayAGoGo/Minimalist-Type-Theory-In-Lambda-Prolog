@@ -7,7 +7,7 @@
 % are copying to a type then we'll copy X to Y where Y is and eigenvariable
 
 mode (copy_to_type i o).
-copy_to_type A B :- print (copy_to_type A B), fail.
+%copy_to_type A B :- print (copy_to_type A B), fail.
 
 copy_to_type [] []. 
 copy_to_type [X|Xs] [Y|Ys] :- copy_to_type X Y, copy_to_type Xs Ys.
@@ -269,7 +269,7 @@ copy_to_type (elim_singleton T C X) (elim_singleton S D Y) :-
 copy_to_type X Y :-
     (name X H T, print X H T);
     constant X _ [], !,
-    (copy_var Y X, !; X = Y, print "error: constant without copy").
+    (copy_var Y X, !; print "error: constant without copy", halt).
 
 % Applied constant
 % Fresh var with args
