@@ -808,6 +808,8 @@ typecheckStEx X TypeList
 
 testLib L :- 
     L = [
+% buggato ma non so perche' -> non riesce a convertire il tipo forall effettivo
+% col forall con meta dopo l'assegnamento di forall_lam tramite tattica
         (univPi A\ locDefL
             setId
             (setPi A (_\ A))
@@ -816,30 +818,42 @@ testLib L :-
             implId
             (implies A A)
             (script [implI hyp, implE hyp])),
-% buggato ma non so perche' -> non riesce a convertire il tipo forall effettivo
-% col forall con meta dopo l'assegnamento di forall_lam tramite tattica
-        %(univProp A\ locDefL forallId (forall A (_\ A))),
+        (univProp A\ locDefL
+            forallId
+            (forall A (_\ A))
+            (script [forallI hyp, forallE hyp])),
         (univProp A\ univProp B\ locDefL
-            kCombProp
+            kCombImpl
             (implies A (implies B A))
             (script [implI hyp, implI, implE hyp])),
+        (univProp A\ univProp B\ locDefL
+            kCombForall
+            (forall A (_\ forall B (_\ A)))
+            (script [forallI hyp, forallI, forallE hyp])),
         (univPi A\ univDepPi A B\ locDefL
             kCombPi
             (setPi A (x\ setPi (B x) (_\ A)))
             (script [intro x, intro, app x])),
         (univPi A\ univPi B\ locDefL
             nonDepAnd
-            (setPi A (_\ setPi B (_\ setSigma A (_\ B)))))
-        %(univProp A\ univProp B\ locDefL   % buggato come l'altro
-        %    kCombForall
-        %    (forall A (_\ forall B (_\ A))))
+            (setPi A (_\ setPi B (_\ setSigma A (_\ B))))
+            (script
+                [intro x,
+                 intro y,
+                 sigI,
+                 branch,
+                     app x,
+                 shift,
+                     app y,
+                 unbranch]))
 /*
-        (univPi A\ univDepPi A B\ univDepPi (setPi A B) C\ locDefL
+% TODO: define an S combinator that works -> need dependent types on n args
+%       the following code does not work
+        (univPi A\ univDepPi A B\ univDepPi B C\ locDefL
             sCombPi
             (setPi
-                (setPi A (x\ setPi (# B x) (y\ (# (# C x) y))))
-                (_\ setPi (setPi A B) (f\ setPi A (x\ (# (# C x) (app f x))))))
-        )
+                (setPi A (x\ setPi (B x) (y\ (C x y))))
+                (_\ setPi (setPi A B) (f\ setPi A (x\ (C x (app f x)))))))
 */
     ].
 

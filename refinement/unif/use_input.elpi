@@ -1,5 +1,5 @@
 % use_var tries to use an eigenvariable to unify with a term through
-% computation on that variable (and based on the ter)
+% computation on that variable (and based on the term)
 %   ex. app X (pair a b) a -> X = (lam T (x\ fst x))
 % In other words: try to unify by using an eliminator on a term
 % Some terms are not suitable, for instance trying to use inductive types such

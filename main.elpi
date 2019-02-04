@@ -601,6 +601,7 @@ verify_arg_order N
     ,  spy(verify_arg_order_ N RVars)
     .
 
+%process_entry A B :- print (process_entry A B), fail.
 % Caso di definizione senza termine -> lo devi dimostrare
 process_entry (locDefL N TY) Hyp :-
     spy(verify_arg_order N),

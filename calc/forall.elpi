@@ -11,8 +11,8 @@ ofType (forall B C) KIND IE
     .
 
 of (forall_lam B F) (forall B C) (forall_lam B F') IE
-    :- spy(pi x\ locDecl x B => of (F x) (C x) (F' x) IE)
-    ,  spy(ofType (forall B C) _ IE)
+    :- spy(ofType B _ IE)
+    ,  spy(pi x\ locDecl x B => of (F x) (C x) (F' x) IE)
     .
 
 of (forall_app Lam X) (CX) (forall_app Lam' X') IE 
